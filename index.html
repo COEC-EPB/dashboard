@@ -425,6 +425,31 @@ function matchEscopoInspecao(item, regional, supervisor){
   return campos.includes(alvo);
 }
 
+  function countParticipacaoSupervisor(inspecao, supervisor){
+  if (!supervisor) return 1; // sem supervisor: 1 por inspeção
+
+  const alvo = normName(supervisor);
+
+  const campos = [
+    inspecao?.cadastrante,
+    inspecao?.lider,
+    inspecao?.auditor_1,
+    inspecao?.auditor_2,
+    inspecao?.auditor_3
+  ].map(normName).filter(Boolean);
+
+  // ✅ conta quantas vezes aparece (participação)
+  return campos.filter(n => n === alvo).length;
+}
+
+function isInRegional(inspecao, regional){
+  if (!regional) return true;
+  const lider = String(inspecao?.lider || "").trim();
+  const reg = REGIONAL_POR_LIDER[lider] || "";
+  return reg === regional;
+}
+
+
 function matchEscopoNC(item, regional, supervisor){
   const lider = String(item?.lider || "").trim();
   const reg = REGIONAL_POR_LIDER[lider] || "";
@@ -467,14 +492,20 @@ function calcAbrangencia(inspecoesFiltradas, rankingFiltrado){
 /* ============================
    ✅ FALTAVA ESSA FUNÇÃO!
 ============================ */
-function calcWeeksFromInspecoes(inspecoes){
+function calcWeeksFromInspecoes(inspecoes, supervisor){
   const weeks = [0,0,0,0,0];
+
   (inspecoes || []).forEach(i=>{
     const dt = parseISODateFlex(i.data_inspecao);
     if(!dt) return;
+
     const w = weekOfMonth(dt);
-    if(w>=1 && w<=5) weeks[w-1]++;
+    if(w < 1 || w > 5) return;
+
+    const inc = countParticipacaoSupervisor(i, supervisor); // ✅ 1 ou participações
+    weeks[w-1] += inc;
   });
+
   return weeks;
 }
 
@@ -656,7 +687,24 @@ async function atualizarDashboard(){
 
     // 1) inspeções mês (KPI + semanas)
     const inspecoesMes = await fetchInspecoesRange(ini, fim);
-    const inspecoesFiltradas = inspecoesMes.filter(i => matchEscopoInspecao(i, regional, supervisor));
+
+    // lista base (regional sempre pelo "dono" da inspeção)
+    const inspecoesRegional = inspecoesMes.filter(i => isInRegional(i, regional));
+    
+    // lista usada para ABRANGÊNCIA e outras coisas que precisam ser inspeção "de verdade"
+    const inspecoesFiltradas = inspecoesRegional.filter(i => matchEscopoInspecao(i, regional, supervisor));
+    
+    // ✅ KPI/Contagem igual página de inspeções
+    const qtdInspecoes = inspecoesRegional.reduce((acc, i) => {
+      // se tem supervisor: só soma se ele participou (e soma quantidade de participações)
+      if (supervisor) {
+        return acc + countParticipacaoSupervisor(i, supervisor);
+      }
+      // sem supervisor: 1 por inspeção
+      return acc + 1;
+    }, 0);
+    
+    document.getElementById("kpiInspecoes").textContent = qtdInspecoes;
 
     // 2) NC (KPI)
     const ncs = await fetchNaoConformidades();
@@ -689,7 +737,7 @@ async function atualizarDashboard(){
       `${ab.inspecionados} inspecionados / ${ab.total} total`;
 
     // semanas
-    const weeks = calcWeeksFromInspecoes(inspecoesFiltradas);
+    const weeks = calcWeeksFromInspecoes(inspecoesRegional, supervisor);
     drawWeeks(document.getElementById("cvFrequencia"), weeks);
 
     // ano (agrega mês a mês)
@@ -703,8 +751,14 @@ async function atualizarDashboard(){
       const r = mesToRange(mesKey);
 
       const ins = await fetchInspecoesRange(r.ini, r.fim);
-      const insF = ins.filter(i => matchEscopoInspecao(i, regional, supervisor));
-      insAno.push(insF.length);
+      cconst insRegional = ins.filter(i => isInRegional(i, regional));
+
+const qtdMes = insRegional.reduce((acc, it) => {
+  if (supervisor) return acc + countParticipacaoSupervisor(it, supervisor);
+  return acc + 1;
+}, 0);
+
+insAno.push(qtdMes);
 
       const ncsMes = ncsFiltradas.filter(nc=>{
         const dt =
