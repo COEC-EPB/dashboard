@@ -19,6 +19,7 @@
     }
     *{box-sizing:border-box;}
     body{margin:0;font-family:"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--text);}
+
     header{
       background:var(--card);
       padding:16px 24px;
@@ -28,9 +29,11 @@
     }
     header h2{margin:0;color:var(--primary);display:flex;align-items:center;gap:8px;font-size:18px;}
     .top-actions{margin-left:auto;display:flex;gap:12px;align-items:center;flex-wrap:wrap;}
+
     input,select{
       padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:#fff;font-size:14px;outline:none;
     }
+
     button,.btn-link{
       padding:9px 14px;border-radius:10px;border:none;cursor:pointer;font-size:14px;
       display:inline-flex;align-items:center;gap:8px;white-space:nowrap;
@@ -41,17 +44,20 @@
       background:#fff;color:#333;border:1px solid var(--border);text-decoration:none;
     }
     button.secondary:hover,.btn-link:hover{background:#f3f3f3;}
+
     main{padding:24px;}
     .row{display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin-bottom:14px;}
     .status{font-size:14px;color:#555;min-width:240px;flex:1;}
     .status.success{color:#137333;}
     .status.error{color:var(--danger);}
+
     .grid{
       display:grid;
       grid-template-columns: repeat(12, 1fr);
       gap:12px;
       align-items:stretch;
     }
+
     .card{
       background:var(--card);
       border:1px solid var(--border);
@@ -60,6 +66,7 @@
       overflow:hidden;
     }
     .pad{padding:14px;}
+
     .kpi{
       display:flex;flex-direction:column;gap:6px;
       min-height:96px;
@@ -67,39 +74,43 @@
     .kpi .label{font-size:12px;color:#666;font-weight:700;}
     .kpi .value{font-size:28px;font-weight:900;line-height:1;}
     .kpi .sub{font-size:12px;color:#777;}
+
     .pill{
       display:inline-flex;align-items:center;gap:8px;
       padding:8px 10px;border-radius:999px;border:1px solid var(--border);
       background:#fff;font-size:13px;color:#444;font-weight:700;
     }
+
     .divider{height:1px;background:var(--border);margin:12px 0;}
+
     canvas{width:100%;height:320px;display:block;}
+
     .chart-title{
       display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
     }
     .chart-title h3{margin:0;color:var(--primary);font-size:16px;}
     .hint{font-size:12px;color:#777;}
-    /* ============================
-   TOOLTIP CANVAS
-============================ */
-.canvas-tip{
-  position: fixed;
-  display: none;
-  pointer-events: none;
-  z-index: 99999;
-  background: #111;
-  color: #fff;
-  padding: 8px 10px;
-  border-radius: 10px;
-  font-size: 12px;
-  line-height: 1.2;
-  white-space: nowrap;
-  box-shadow: 0 10px 26px rgba(0,0,0,.25);
-  transform: translate(10px, 10px);
-}
-.canvas-tip b{ font-weight: 900; }
-.canvas-tip .muted{ opacity: .85; font-weight: 600; }
 
+    /* ============================
+       TOOLTIP CANVAS
+    ============================ */
+    .canvas-tip{
+      position: fixed;
+      display: none;
+      pointer-events: none;
+      z-index: 99999;
+      background: #111;
+      color: #fff;
+      padding: 8px 10px;
+      border-radius: 10px;
+      font-size: 12px;
+      line-height: 1.2;
+      white-space: nowrap;
+      box-shadow: 0 10px 26px rgba(0,0,0,.25);
+      transform: translate(10px, 10px);
+    }
+    .canvas-tip b{ font-weight: 900; }
+    .canvas-tip .muted{ opacity: .85; font-weight: 600; }
   </style>
 </head>
 
@@ -207,6 +218,9 @@
       </div>
     </div>
   </main>
+
+  <!-- tooltip -->
+  <div id="canvasTooltip" class="canvas-tip"></div>
 
 <script>
 /* ============================
@@ -323,7 +337,7 @@ function mesAtualYYYYMM(){
 }
 function mesToRange(mesYYYYMM){
   const [y,m] = String(mesYYYYMM||"").split("-");
-  if (!y || !m) return {ini:"", fim:""};
+  if (!y || !m) return {ini:"", fim:"", ano:""};
   return { ini:`${y}-${m}-01`, fim:`${y}-${m}-31`, ano:y };
 }
 
@@ -345,21 +359,18 @@ async function carregarSupervisoresNoSelect(){
   const sel = document.getElementById("filtroSupervisor");
   if (!sel) return;
 
-  // monta da lista fixa (mapa)
   const lideres = Object.keys(REGIONAL_POR_LIDER)
     .sort((a,b)=> normName(a).localeCompare(normName(b)));
 
   sel.innerHTML = `<option value="">Todos</option>` +
     lideres.map(l => `<option value="${l.replaceAll('"',"&quot;")}">${l}</option>`).join("");
 
-  // opcional: pré-seleciona o líder do login (se existir no mapa)
   const meu = normName(getNomeDoToken());
   const found = lideres.find(x => normName(x) === meu);
   if (found) sel.value = found;
 }
 
 async function fetchInspecoesRange(ini, fim){
-  // seu worker já usa data_ini/data_fim e lider quando quer
   const qs = new URLSearchParams();
   if (ini) qs.set("data_ini", ini);
   if (fim) qs.set("data_fim", fim);
@@ -373,7 +384,6 @@ async function fetchInspecoesRange(ini, fim){
 }
 
 async function fetchNaoConformidades(){
-  // tolerante: pode retornar array, ou {results}, etc
   const res = await apiFetch(`/nao-conformidades`);
   const text = await res.text();
   if (!res.ok) throw new Error(text);
@@ -385,7 +395,6 @@ async function fetchNaoConformidades(){
 }
 
 async function fetchRankingColaboradores(){
-  // usado para "total colaboradores" (abrangência)
   const res = await apiFetch(`/ranking-colaboradores`);
   const text = await res.text();
   if (!res.ok) throw new Error(text);
@@ -397,18 +406,14 @@ async function fetchRankingColaboradores(){
    FILTRO DE ESCOPO (Regional/Supervisor)
 ============================ */
 function matchEscopoInspecao(item, regional, supervisor){
-  // Regional sempre baseado no LÍDER "dono" da inspeção
   const lider = String(item?.lider || "").trim();
   const reg = REGIONAL_POR_LIDER[lider] || "";
 
   if (regional && reg !== regional) return false;
 
-  // ✅ Se NÃO escolheu supervisor: cada inspeção vale 1 (sem regra de “participação”)
   if (!supervisor) return true;
 
-  // ✅ Se escolheu supervisor: conta se ele participou (lider/auditores/cadastrante)
   const alvo = normName(supervisor);
-
   const campos = [
     item?.cadastrante,
     item?.lider,
@@ -421,7 +426,6 @@ function matchEscopoInspecao(item, regional, supervisor){
 }
 
 function matchEscopoNC(item, regional, supervisor){
-  // NC também tem "lider" no seu import
   const lider = String(item?.lider || "").trim();
   const reg = REGIONAL_POR_LIDER[lider] || "";
 
@@ -432,16 +436,11 @@ function matchEscopoNC(item, regional, supervisor){
 
 /* ============================
    ABRANGÊNCIA
-   - total colaboradores: ranking-colaboradores filtrado por escopo (lider/regional)
-   - inspecionados: únicos encontrados nas inspeções (auditados + colaborador_1 + colaborador_2)
 ============================ */
 function splitNomesCampo(v){
   const s = String(v||"").trim();
   if (!s) return [];
-  return s
-    .split(/[,;|]/g)
-    .map(x => x.trim())
-    .filter(Boolean);
+  return s.split(/[,;|]/g).map(x => x.trim()).filter(Boolean);
 }
 
 function calcAbrangencia(inspecoesFiltradas, rankingFiltrado){
@@ -453,7 +452,6 @@ function calcAbrangencia(inspecoesFiltradas, rankingFiltrado){
 
   const inspSet = new Set();
   inspecoesFiltradas.forEach(i=>{
-    // tenta pegar pessoas auditadas/colab
     splitNomesCampo(i.auditados).forEach(n => inspSet.add(normName(n)));
     splitNomesCampo(i.colaborador_1).forEach(n => inspSet.add(normName(n)));
     splitNomesCampo(i.colaborador_2).forEach(n => inspSet.add(normName(n)));
@@ -461,21 +459,29 @@ function calcAbrangencia(inspecoesFiltradas, rankingFiltrado){
 
   const total = totalSet.size;
   const inspecionados = [...inspSet].filter(n => totalSet.has(n)).length;
-
   const pct = total > 0 ? (inspecionados / total) * 100 : 0;
+
   return { total, inspecionados, pct };
 }
 
 /* ============================
-   GRÁFICOS (Canvas simples)
+   ✅ FALTAVA ESSA FUNÇÃO!
 ============================ */
-/* ============================
-   TOOLTIP HELPERS (Canvas)
-============================ */
-function getTooltipEl(){
-  let tip = document.getElementById("canvasTooltip");
-  return tip;
+function calcWeeksFromInspecoes(inspecoes){
+  const weeks = [0,0,0,0,0];
+  (inspecoes || []).forEach(i=>{
+    const dt = parseISODateFlex(i.data_inspecao);
+    if(!dt) return;
+    const w = weekOfMonth(dt);
+    if(w>=1 && w<=5) weeks[w-1]++;
+  });
+  return weeks;
 }
+
+/* ============================
+   TOOLTIP (Canvas)
+============================ */
+function getTooltipEl(){ return document.getElementById("canvasTooltip"); }
 
 function showTip(text, clientX, clientY){
   const tip = getTooltipEl();
@@ -483,16 +489,13 @@ function showTip(text, clientX, clientY){
   tip.innerHTML = text;
   tip.style.display = "block";
 
-  // posiciona perto do mouse
   const pad = 12;
   const vw = window.innerWidth;
   const vh = window.innerHeight;
 
-  // primeiro posiciona
   tip.style.left = (clientX + pad) + "px";
   tip.style.top  = (clientY + pad) + "px";
 
-  // depois ajusta se estourar borda
   const r = tip.getBoundingClientRect();
   let x = clientX + pad;
   let y = clientY + pad;
@@ -512,7 +515,7 @@ function hideTip(){
 
 function attachCanvasTooltip(canvas){
   if (!canvas) return;
-  if (canvas._tooltipBound) return; // evita duplicar listener
+  if (canvas._tooltipBound) return;
   canvas._tooltipBound = true;
 
   canvas.addEventListener("mousemove", (ev) => {
@@ -523,7 +526,6 @@ function attachCanvasTooltip(canvas){
     const bars = canvas._bars || [];
     let hit = null;
 
-    // procura de trás pra frente (último desenhado "por cima")
     for (let i = bars.length - 1; i >= 0; i--){
       const b = bars[i];
       if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h){
@@ -533,11 +535,10 @@ function attachCanvasTooltip(canvas){
 
     if (!hit) return hideTip();
 
-    const html = `
-      <div class="muted">${hit.group}</div>
-      <div><b>${hit.series}</b>: ${hit.value}</div>
-    `;
-    showTip(html, ev.clientX, ev.clientY);
+    showTip(
+      `<div class="muted">${hit.group}</div><div><b>${hit.series}</b>: ${hit.value}</div>`,
+      ev.clientX, ev.clientY
+    );
   });
 
   canvas.addEventListener("mouseleave", hideTip);
@@ -564,7 +565,6 @@ function drawBars(canvas, labels, valuesA, valuesB, labelA="A", labelB="B"){
   const maxV = Math.max(1, ...valuesA, ...valuesB);
   const cols = labels.length;
 
-  // guarda hitboxes p/ tooltip
   canvas._bars = [];
 
   // eixos
@@ -612,60 +612,31 @@ function drawBars(canvas, labels, valuesA, valuesB, labelA="A", labelB="B"){
     ctx.rect(x0, yA, barW, hA);
     ctx.fill(); ctx.stroke();
 
-    canvas._bars.push({
-      x: x0, y: yA, w: barW, h: hA,
-      group: labels[i],
-      series: labelA,
-      value: valuesA[i] ?? 0
-    });
+    canvas._bars.push({ x:x0, y:yA, w:barW, h:hA, group: labels[i], series: labelA, value: valuesA[i] ?? 0 });
 
-    // B (se labelB existir e valueB > 0 ou quiser sempre)
-    if (labelB) {
+    // B
+    if (labelB){
       ctx.fillStyle = "rgba(255,99,71,.25)";
       ctx.strokeStyle = "rgba(255,99,71,.35)";
       ctx.beginPath();
       ctx.rect(x0+barW+gap, yB, barW, hB);
       ctx.fill(); ctx.stroke();
 
-      canvas._bars.push({
-        x: x0+barW+gap, y: yB, w: barW, h: hB,
-        group: labels[i],
-        series: labelB,
-        value: valuesB[i] ?? 0
-      });
+      canvas._bars.push({ x:x0+barW+gap, y:yB, w:barW, h:hB, group: labels[i], series: labelB, value: valuesB[i] ?? 0 });
     }
 
-    // label
     ctx.fillStyle="#555";
     ctx.fillText(labels[i], pad + i*groupW + 6, H - pad + 18);
   }
 
-  // legenda
-  ctx.fillStyle = "rgba(0,151,206,.25)";
-  ctx.fillRect(W-pad-180, pad-18, 12, 12);
-  ctx.strokeStyle = "rgba(0,151,206,.35)";
-  ctx.strokeRect(W-pad-180, pad-18, 12, 12);
-  ctx.fillStyle="#444";
-  ctx.fillText(labelA, W-pad-160, pad-8);
-
-  if (labelB){
-    ctx.fillStyle = "rgba(255,99,71,.25)";
-    ctx.fillRect(W-pad-100, pad-18, 12, 12);
-    ctx.strokeStyle = "rgba(255,99,71,.35)";
-    ctx.strokeRect(W-pad-100, pad-18, 12, 12);
-    ctx.fillStyle="#444";
-    ctx.fillText(labelB, W-pad-80, pad-8);
-  }
-
-  // liga tooltip (1x por canvas)
   attachCanvasTooltip(canvas);
 }
 
 function drawWeeks(canvas, weeks){
   const labels = ["S1","S2","S3","S4","S5"];
-  // B vazio → não desenha segundo conjunto
   drawBars(canvas, labels, weeks, [0,0,0,0,0], "Inspeções", "");
 }
+
 /* ============================
    DASHBOARD CORE
 ============================ */
@@ -683,32 +654,24 @@ async function atualizarDashboard(){
 
     const {ini, fim, ano} = mesToRange(mes);
 
-    // 1) inspeções do mês (para KPI e frequência)
+    // 1) inspeções mês (KPI + semanas)
     const inspecoesMes = await fetchInspecoesRange(ini, fim);
     const inspecoesFiltradas = inspecoesMes.filter(i => matchEscopoInspecao(i, regional, supervisor));
 
-    // 2) NC (para KPI)
+    // 2) NC (KPI)
     const ncs = await fetchNaoConformidades();
-    const ncsFiltradas = ncs
-      .filter(nc => String(nc.status||"").trim().toUpperCase() === "ATRASADO" || String(nc.status||"").trim() !== "") // mantém, mas conta todas abaixo
-      .filter(nc => matchEscopoNC(nc, regional, supervisor));
-
-    // conta NC total no escopo (se quiser só "Atrasado", muda aqui)
+    const ncsFiltradas = ncs.filter(nc => matchEscopoNC(nc, regional, supervisor));
     const totalNC = ncsFiltradas.length;
 
-    // 3) abrangência: usa ranking-colaboradores como base de "total colaboradores"
+    // 3) abrangência
     const ranking = await fetchRankingColaboradores();
     const rankingFiltrado = ranking.filter(r=>{
-  const liderR = String(r.lider||"").trim();
-  const reg = REGIONAL_POR_LIDER[liderR] || "";
-
-  if (regional && reg !== regional) return false;
-
-  // ✅ quando seleciona supervisor, abrangência fica daquele líder
-  if (supervisor && liderR !== supervisor) return false;
-
-  return true;
-});
+      const liderR = String(r.lider||"").trim();
+      const reg = REGIONAL_POR_LIDER[liderR] || "";
+      if (regional && reg !== regional) return false;
+      if (supervisor && liderR !== supervisor) return false;
+      return true;
+    });
 
     const ab = calcAbrangencia(inspecoesFiltradas, rankingFiltrado);
 
@@ -725,13 +688,11 @@ async function atualizarDashboard(){
     document.getElementById("kpiAbrangenciaSub").textContent =
       `${ab.inspecionados} inspecionados / ${ab.total} total`;
 
-    // gráfico frequência semanal
+    // semanas
     const weeks = calcWeeksFromInspecoes(inspecoesFiltradas);
     drawWeeks(document.getElementById("cvFrequencia"), weeks);
 
-    // gráfico ano: pega stats do backend, e filtra pelo escopo via inspeções (fallback)
-    // Como seu /stats-mensal hoje é mais global, aqui vai uma versão robusta:
-    // - busca mês-a-mês de inspeções do ano e agrega em JS (pode pesar, mas é confiável).
+    // ano (agrega mês a mês)
     const labelsAno = ["01","02","03","04","05","06","07","08","09","10","11","12"].map(nomeMes);
 
     const insAno = [];
@@ -740,11 +701,11 @@ async function atualizarDashboard(){
     for(let mm=1; mm<=12; mm++){
       const mesKey = `${ano}-${String(mm).padStart(2,"0")}`;
       const r = mesToRange(mesKey);
+
       const ins = await fetchInspecoesRange(r.ini, r.fim);
       const insF = ins.filter(i => matchEscopoInspecao(i, regional, supervisor));
       insAno.push(insF.length);
 
-      // NC por mês: tenta filtrar por datas se existir campo inicio/termino/inicio_acao etc (pode variar)
       const ncsMes = ncsFiltradas.filter(nc=>{
         const dt =
           parseISODateFlex(nc.inicio_acao) ||
@@ -755,8 +716,8 @@ async function atualizarDashboard(){
         const mk = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}`;
         return mk === mesKey;
       });
-      ncAno.push(ncsMes.length);
-    }
+     
+ }
 
     drawBars(document.getElementById("cvAno"), labelsAno, insAno, ncAno, "Inspeções", "NC");
 
@@ -784,6 +745,6 @@ async function atualizarDashboard(){
   atualizarDashboard();
 })();
 </script>
-<div id="canvasTooltip" class="canvas-tip"></div>
+
 </body>
 </html>
