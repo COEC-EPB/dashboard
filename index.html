@@ -79,6 +79,27 @@
     }
     .chart-title h3{margin:0;color:var(--primary);font-size:16px;}
     .hint{font-size:12px;color:#777;}
+    /* ============================
+   TOOLTIP CANVAS
+============================ */
+.canvas-tip{
+  position: fixed;
+  display: none;
+  pointer-events: none;
+  z-index: 99999;
+  background: #111;
+  color: #fff;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: 0 10px 26px rgba(0,0,0,.25);
+  transform: translate(10px, 10px);
+}
+.canvas-tip b{ font-weight: 900; }
+.canvas-tip .muted{ opacity: .85; font-weight: 600; }
+
   </style>
 </head>
 
@@ -448,6 +469,84 @@ function calcAbrangencia(inspecoesFiltradas, rankingFiltrado){
 /* ============================
    GRÁFICOS (Canvas simples)
 ============================ */
+/* ============================
+   TOOLTIP HELPERS (Canvas)
+============================ */
+function getTooltipEl(){
+  let tip = document.getElementById("canvasTooltip");
+  return tip;
+}
+
+function showTip(text, clientX, clientY){
+  const tip = getTooltipEl();
+  if (!tip) return;
+  tip.innerHTML = text;
+  tip.style.display = "block";
+
+  // posiciona perto do mouse
+  const pad = 12;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  // primeiro posiciona
+  tip.style.left = (clientX + pad) + "px";
+  tip.style.top  = (clientY + pad) + "px";
+
+  // depois ajusta se estourar borda
+  const r = tip.getBoundingClientRect();
+  let x = clientX + pad;
+  let y = clientY + pad;
+
+  if (r.right > vw - 8) x = clientX - r.width - pad;
+  if (r.bottom > vh - 8) y = clientY - r.height - pad;
+
+  tip.style.left = x + "px";
+  tip.style.top  = y + "px";
+}
+
+function hideTip(){
+  const tip = getTooltipEl();
+  if (!tip) return;
+  tip.style.display = "none";
+}
+
+function attachCanvasTooltip(canvas){
+  if (!canvas) return;
+  if (canvas._tooltipBound) return; // evita duplicar listener
+  canvas._tooltipBound = true;
+
+  canvas.addEventListener("mousemove", (ev) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = ev.clientX - rect.left;
+    const y = ev.clientY - rect.top;
+
+    const bars = canvas._bars || [];
+    let hit = null;
+
+    // procura de trás pra frente (último desenhado "por cima")
+    for (let i = bars.length - 1; i >= 0; i--){
+      const b = bars[i];
+      if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h){
+        hit = b; break;
+      }
+    }
+
+    if (!hit) return hideTip();
+
+    const html = `
+      <div class="muted">${hit.group}</div>
+      <div><b>${hit.series}</b>: ${hit.value}</div>
+    `;
+    showTip(html, ev.clientX, ev.clientY);
+  });
+
+  canvas.addEventListener("mouseleave", hideTip);
+  window.addEventListener("scroll", hideTip, { passive:true });
+}
+
+/* ============================
+   GRÁFICOS (Canvas com tooltip)
+============================ */
 function drawBars(canvas, labels, valuesA, valuesB, labelA="A", labelB="B"){
   const ctx = canvas.getContext("2d");
 
@@ -464,6 +563,9 @@ function drawBars(canvas, labels, valuesA, valuesB, labelA="A", labelB="B"){
 
   const maxV = Math.max(1, ...valuesA, ...valuesB);
   const cols = labels.length;
+
+  // guarda hitboxes p/ tooltip
+  canvas._bars = [];
 
   // eixos
   ctx.strokeStyle = "#ddd";
@@ -499,20 +601,39 @@ function drawBars(canvas, labels, valuesA, valuesB, labelA="A", labelB="B"){
     const hA = (valuesA[i]/maxV)*chartH;
     const hB = (valuesB[i]/maxV)*chartH;
 
+    const yA = (H-pad)-hA;
+    const yB = (H-pad)-hB;
+
     // A
     ctx.fillStyle = "rgba(0,151,206,.25)";
     ctx.strokeStyle = "rgba(0,151,206,.35)";
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.rect(x0, (H-pad)-hA, barW, hA);
+    ctx.rect(x0, yA, barW, hA);
     ctx.fill(); ctx.stroke();
 
-    // B
-    ctx.fillStyle = "rgba(255,99,71,.25)";
-    ctx.strokeStyle = "rgba(255,99,71,.35)";
-    ctx.beginPath();
-    ctx.rect(x0+barW+gap, (H-pad)-hB, barW, hB);
-    ctx.fill(); ctx.stroke();
+    canvas._bars.push({
+      x: x0, y: yA, w: barW, h: hA,
+      group: labels[i],
+      series: labelA,
+      value: valuesA[i] ?? 0
+    });
+
+    // B (se labelB existir e valueB > 0 ou quiser sempre)
+    if (labelB) {
+      ctx.fillStyle = "rgba(255,99,71,.25)";
+      ctx.strokeStyle = "rgba(255,99,71,.35)";
+      ctx.beginPath();
+      ctx.rect(x0+barW+gap, yB, barW, hB);
+      ctx.fill(); ctx.stroke();
+
+      canvas._bars.push({
+        x: x0+barW+gap, y: yB, w: barW, h: hB,
+        group: labels[i],
+        series: labelB,
+        value: valuesB[i] ?? 0
+      });
+    }
 
     // label
     ctx.fillStyle="#555";
@@ -527,31 +648,24 @@ function drawBars(canvas, labels, valuesA, valuesB, labelA="A", labelB="B"){
   ctx.fillStyle="#444";
   ctx.fillText(labelA, W-pad-160, pad-8);
 
-  ctx.fillStyle = "rgba(255,99,71,.25)";
-  ctx.fillRect(W-pad-100, pad-18, 12, 12);
-  ctx.strokeStyle = "rgba(255,99,71,.35)";
-  ctx.strokeRect(W-pad-100, pad-18, 12, 12);
-  ctx.fillStyle="#444";
-  ctx.fillText(labelB, W-pad-80, pad-8);
-}
+  if (labelB){
+    ctx.fillStyle = "rgba(255,99,71,.25)";
+    ctx.fillRect(W-pad-100, pad-18, 12, 12);
+    ctx.strokeStyle = "rgba(255,99,71,.35)";
+    ctx.strokeRect(W-pad-100, pad-18, 12, 12);
+    ctx.fillStyle="#444";
+    ctx.fillText(labelB, W-pad-80, pad-8);
+  }
 
-function calcWeeksFromInspecoes(inspecoes){
-  const weeks = [0,0,0,0,0];
-  inspecoes.forEach(i=>{
-    const dt = parseISODateFlex(i.data_inspecao);
-    if(!dt) return;
-    const w = weekOfMonth(dt);
-    if(w>=1 && w<=5) weeks[w-1]++;
-  });
-  return weeks;
+  // liga tooltip (1x por canvas)
+  attachCanvasTooltip(canvas);
 }
 
 function drawWeeks(canvas, weeks){
   const labels = ["S1","S2","S3","S4","S5"];
-  // usa drawBars com B zerado só pra reaproveitar
+  // B vazio → não desenha segundo conjunto
   drawBars(canvas, labels, weeks, [0,0,0,0,0], "Inspeções", "");
 }
-
 /* ============================
    DASHBOARD CORE
 ============================ */
@@ -670,6 +784,6 @@ async function atualizarDashboard(){
   atualizarDashboard();
 })();
 </script>
-
+<div id="canvasTooltip" class="canvas-tip"></div>
 </body>
 </html>
