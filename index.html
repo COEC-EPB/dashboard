@@ -376,12 +376,27 @@ async function fetchRankingColaboradores(){
    FILTRO DE ESCOPO (Regional/Supervisor)
 ============================ */
 function matchEscopoInspecao(item, regional, supervisor){
+  // Regional sempre baseado no LÍDER "dono" da inspeção
   const lider = String(item?.lider || "").trim();
   const reg = REGIONAL_POR_LIDER[lider] || "";
 
   if (regional && reg !== regional) return false;
-  if (supervisor && lider !== supervisor) return false;
-  return true;
+
+  // ✅ Se NÃO escolheu supervisor: cada inspeção vale 1 (sem regra de “participação”)
+  if (!supervisor) return true;
+
+  // ✅ Se escolheu supervisor: conta se ele participou (lider/auditores/cadastrante)
+  const alvo = normName(supervisor);
+
+  const campos = [
+    item?.cadastrante,
+    item?.lider,
+    item?.auditor_1,
+    item?.auditor_2,
+    item?.auditor_3
+  ].map(normName).filter(Boolean);
+
+  return campos.includes(alvo);
 }
 
 function matchEscopoNC(item, regional, supervisor){
@@ -570,12 +585,16 @@ async function atualizarDashboard(){
     // 3) abrangência: usa ranking-colaboradores como base de "total colaboradores"
     const ranking = await fetchRankingColaboradores();
     const rankingFiltrado = ranking.filter(r=>{
-      const lider = String(r.lider||"").trim();
-      const reg = REGIONAL_POR_LIDER[lider] || "";
-      if (regional && reg !== regional) return false;
-      if (supervisor && lider !== supervisor) return false;
-      return true;
-    });
+  const liderR = String(r.lider||"").trim();
+  const reg = REGIONAL_POR_LIDER[liderR] || "";
+
+  if (regional && reg !== regional) return false;
+
+  // ✅ quando seleciona supervisor, abrangência fica daquele líder
+  if (supervisor && liderR !== supervisor) return false;
+
+  return true;
+});
 
     const ab = calcAbrangencia(inspecoesFiltradas, rankingFiltrado);
 
