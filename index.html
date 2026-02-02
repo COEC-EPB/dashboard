@@ -4,9 +4,7 @@
   <meta charset="UTF-8" />
   <title>Dashboard - Inspeções</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
-
   <style>
     :root{
       --primary:#0097CE;
@@ -19,7 +17,6 @@
     }
     *{box-sizing:border-box;}
     body{margin:0;font-family:"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--text);}
-
     header{
       background:var(--card);
       padding:16px 24px;
@@ -29,85 +26,41 @@
     }
     header h2{margin:0;color:var(--primary);display:flex;align-items:center;gap:8px;font-size:18px;}
     .top-actions{margin-left:auto;display:flex;gap:12px;align-items:center;flex-wrap:wrap;}
-
-    input,select{
-      padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:#fff;font-size:14px;outline:none;
-    }
-
+    input,select{padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:#fff;font-size:14px;outline:none;}
     button,.btn-link{
       padding:9px 14px;border-radius:10px;border:none;cursor:pointer;font-size:14px;
       display:inline-flex;align-items:center;gap:8px;white-space:nowrap;
     }
     button{background:var(--primary);color:#fff;}
     button:hover{background:var(--primary-dark);}
-    button.secondary,.btn-link{
-      background:#fff;color:#333;border:1px solid var(--border);text-decoration:none;
-    }
+    button.secondary,.btn-link{background:#fff;color:#333;border:1px solid var(--border);text-decoration:none;}
     button.secondary:hover,.btn-link:hover{background:#f3f3f3;}
-
     main{padding:24px;}
     .row{display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin-bottom:14px;}
     .status{font-size:14px;color:#555;min-width:240px;flex:1;}
     .status.success{color:#137333;}
     .status.error{color:var(--danger);}
-
-    .grid{
-      display:grid;
-      grid-template-columns: repeat(12, 1fr);
-      gap:12px;
-      align-items:stretch;
-    }
-
-    .card{
-      background:var(--card);
-      border:1px solid var(--border);
-      border-radius:14px;
-      box-shadow:0 4px 12px rgba(0,0,0,.06);
-      overflow:hidden;
-    }
+    .grid{display:grid;grid-template-columns: repeat(12, 1fr);gap:12px;align-items:stretch;}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 4px 12px rgba(0,0,0,.06);overflow:hidden;}
     .pad{padding:14px;}
-
-    .kpi{
-      display:flex;flex-direction:column;gap:6px;
-      min-height:96px;
-    }
+    .kpi{display:flex;flex-direction:column;gap:6px;min-height:96px;}
     .kpi .label{font-size:12px;color:#666;font-weight:700;}
     .kpi .value{font-size:28px;font-weight:900;line-height:1;}
     .kpi .sub{font-size:12px;color:#777;}
-
     .pill{
       display:inline-flex;align-items:center;gap:8px;
       padding:8px 10px;border-radius:999px;border:1px solid var(--border);
       background:#fff;font-size:13px;color:#444;font-weight:700;
     }
-
     .divider{height:1px;background:var(--border);margin:12px 0;}
-
     canvas{width:100%;height:320px;display:block;}
-
-    .chart-title{
-      display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
-    }
+    .chart-title{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
     .chart-title h3{margin:0;color:var(--primary);font-size:16px;}
     .hint{font-size:12px;color:#777;}
-
-    /* ============================
-       TOOLTIP CANVAS
-    ============================ */
     .canvas-tip{
-      position: fixed;
-      display: none;
-      pointer-events: none;
-      z-index: 99999;
-      background: #111;
-      color: #fff;
-      padding: 8px 10px;
-      border-radius: 10px;
-      font-size: 12px;
-      line-height: 1.2;
-      white-space: nowrap;
-      box-shadow: 0 10px 26px rgba(0,0,0,.25);
-      transform: translate(10px, 10px);
+      position: fixed;display: none;pointer-events: none;z-index: 99999;
+      background: #111;color: #fff;padding: 8px 10px;border-radius: 10px;font-size: 12px;line-height: 1.2;
+      white-space: nowrap;box-shadow: 0 10px 26px rgba(0,0,0,.25);transform: translate(10px, 10px);
     }
     .canvas-tip b{ font-weight: 900; }
     .canvas-tip .muted{ opacity: .85; font-weight: 600; }
@@ -115,112 +68,103 @@
 </head>
 
 <body>
-  <header>
-    <h2><i class="bi bi-speedometer2"></i> Dashboard - ões</h2>
+<header>
+  <h2><i class="bi bi-speedometer2"></i> Dashboard - Inspeções</h2>
+  <div class="top-actions">
+    <a class="btn-link" href="https://coec-epb.github.io/geral_colaboradores/" title="Voltar para Inspeções">
+      <i class="bi bi-arrow-left"></i> Inspeções
+    </a>
+    <button class="secondary" id="btnAtualizar"><i class="bi bi-arrow-repeat"></i> Atualizar</button>
+    <button class="secondary" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Sair</button>
+  </div>
+</header>
 
-    <div class="top-actions">
-      <a class="btn-link" href="https://coec-epb.github.io/geral_colaboradores/" title="Voltar para Inspeções">
-        <i class="bi bi-arrow-left"></i> Inspeções
-      </a>
-      <button class="secondary" id="btnAtualizar">
-        <i class="bi bi-arrow-repeat"></i> Atualizar
-      </button>
-      <button class="secondary" onclick="logout()">
-        <i class="bi bi-box-arrow-right"></i> Sair
-      </button>
-    </div>
-  </header>
-
-  <main>
-    <!-- filtros -->
-    <div class="card pad">
-      <div class="row">
-        <div>
-          <div class="hint" style="font-weight:700;margin-bottom:6px;">Mês</div>
-          <input id="filtroMes" type="month" style="width:180px;">
-        </div>
-
-        <div>
-          <div class="hint" style="font-weight:700;margin-bottom:6px;">Regional</div>
-          <select id="filtroRegional" style="min-width:180px;">
-            <option value="">Todas</option>
-            <option value="CENTRO">CENTRO</option>
-            <option value="LESTE">LESTE</option>
-            <option value="OESTE">OESTE</option>
-          </select>
-        </div>
-
-        <div style="flex:1;min-width:260px;">
-          <div class="hint" style="font-weight:700;margin-bottom:6px;">Supervisor (Líder)</div>
-          <select id="filtroSupervisor" style="width:100%;">
-            <option value="">Todos</option>
-          </select>
-        </div>
-
-        <div id="status" class="status"></div>
+<main>
+  <div class="card pad">
+    <div class="row">
+      <div>
+        <div class="hint" style="font-weight:700;margin-bottom:6px;">Mês</div>
+        <input id="filtroMes" type="month" style="width:180px;">
       </div>
 
-      <div class="divider"></div>
-
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <span class="pill"><i class="bi bi-info-circle"></i> Filtros aplicam em KPIs e gráficos</span>
-        <span class="pill"><i class="bi bi-people"></i> Abrangência = inspecionados / total colaboradores</span>
+      <div>
+        <div class="hint" style="font-weight:700;margin-bottom:6px;">Regional</div>
+        <select id="filtroRegional" style="min-width:180px;">
+          <option value="">Todas</option>
+          <option value="CENTRO">CENTRO</option>
+          <option value="LESTE">LESTE</option>
+          <option value="OESTE">OESTE</option>
+        </select>
       </div>
+
+      <div style="flex:1;min-width:260px;">
+        <div class="hint" style="font-weight:700;margin-bottom:6px;">Supervisor (Líder)</div>
+        <select id="filtroSupervisor" style="width:100%;">
+          <option value="">Todos</option>
+        </select>
+      </div>
+
+      <div id="status" class="status"></div>
     </div>
 
-    <!-- KPIs -->
-    <div class="grid" style="margin-top:12px;">
-      <div class="card pad" style="grid-column: span 4;">
-        <div class="kpi">
-          <div class="label">Qtd. Inspeções</div>
-          <div class="value" id="kpiInspecoes">0</div>
-          <div class="sub" id="kpiInspecoesSub">—</div>
-        </div>
-      </div>
+    <div class="divider"></div>
 
-      <div class="card pad" style="grid-column: span 4;">
-        <div class="kpi">
-          <div class="label">Qtd. Não Conformidades</div>
-          <div class="value" id="kpiNC">0</div>
-          <div class="sub" id="kpiNCSub">—</div>
-        </div>
-      </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <span class="pill"><i class="bi bi-info-circle"></i> Filtros aplicam em KPIs e gráficos</span>
+      <span class="pill"><i class="bi bi-people"></i> Abrangência = inspecionados / total colaboradores</span>
+    </div>
+  </div>
 
-      <div class="card pad" style="grid-column: span 4;">
-        <div class="kpi">
-          <div class="label">Abrangência</div>
-          <div class="value" id="kpiAbrangencia">0%</div>
-          <div class="sub" id="kpiAbrangenciaSub">0 inspecionados / 0 total</div>
-        </div>
+  <div class="grid" style="margin-top:12px;">
+    <div class="card pad" style="grid-column: span 4;">
+      <div class="kpi">
+        <div class="label">Qtd. Inspeções</div>
+        <div class="value" id="kpiInspecoes">0</div>
+        <div class="sub" id="kpiInspecoesSub">—</div>
       </div>
     </div>
 
-    <!-- Gráficos -->
-    <div class="grid" style="margin-top:12px;">
-      <div class="card pad" style="grid-column: span 6;">
-        <div class="chart-title">
-          <h3><i class="bi bi-graph-up"></i> Frequência semanal (mês)</h3>
-          <div class="hint">Soma de inspeções por semana (1..5)</div>
-        </div>
-        <div style="margin-top:10px;">
-          <canvas id="cvFrequencia"></canvas>
-        </div>
-      </div>
-
-      <div class="card pad" style="grid-column: span 6;">
-        <div class="chart-title">
-          <h3><i class="bi bi-bar-chart"></i> Inspeções x NC por mês (ano)</h3>
-          <div class="hint">Ano = ano do mês selecionado</div>
-        </div>
-        <div style="margin-top:10px;">
-          <canvas id="cvAno"></canvas>
-        </div>
+    <div class="card pad" style="grid-column: span 4;">
+      <div class="kpi">
+        <div class="label">Qtd. Não Conformidades</div>
+        <div class="value" id="kpiNC">0</div>
+        <div class="sub" id="kpiNCSub">—</div>
       </div>
     </div>
-  </main>
 
-  <!-- tooltip -->
-  <div id="canvasTooltip" class="canvas-tip"></div>
+    <div class="card pad" style="grid-column: span 4;">
+      <div class="kpi">
+        <div class="label">Abrangência</div>
+        <div class="value" id="kpiAbrangencia">0%</div>
+        <div class="sub" id="kpiAbrangenciaSub">0 inspecionados / 0 total</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid" style="margin-top:12px;">
+    <div class="card pad" style="grid-column: span 6;">
+      <div class="chart-title">
+        <h3><i class="bi bi-graph-up"></i> Frequência semanal (mês)</h3>
+        <div class="hint">Soma de inspeções por semana (1..5)</div>
+      </div>
+      <div style="margin-top:10px;">
+        <canvas id="cvFrequencia"></canvas>
+      </div>
+    </div>
+
+    <div class="card pad" style="grid-column: span 6;">
+      <div class="chart-title">
+        <h3><i class="bi bi-bar-chart"></i> Inspeções x NC por mês (ano)</h3>
+        <div class="hint">Ano = ano do mês selecionado</div>
+      </div>
+      <div style="margin-top:10px;">
+        <canvas id="cvAno"></canvas>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="canvasTooltip" class="canvas-tip"></div>
 
 <script>
 /* ============================
@@ -258,42 +202,79 @@ async function apiFetch(path, options={}){
 }
 
 /* ============================
-   TOKEN HELPERS (compat)
+   HELPERS
 ============================ */
-function b64urlToString(b64url) {
-  try {
-    let b64 = String(b64url || "").replace(/-/g, "+").replace(/_/g, "/");
-    while (b64.length % 4) b64 += "=";
-    return atob(b64);
-  } catch { return ""; }
+function normName(s){
+  return String(s || "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/\s+/g," ").trim().toUpperCase();
 }
 
-function decodeTokenPayloadCompat(token) {
-  try {
-    const parts = String(token || "").split(".");
-    if (parts.length < 2) return null;
-
-    const maybeWorkerBody = parts[0];
-    const maybeJwtPayload = parts[1];
-
-    const workerJson = b64urlToString(maybeWorkerBody);
-    if (workerJson && workerJson.trim().startsWith("{")) return JSON.parse(workerJson);
-
-    const jwtJson = b64urlToString(maybeJwtPayload);
-    if (jwtJson && jwtJson.trim().startsWith("{")) return JSON.parse(jwtJson);
-
-    return null;
-  } catch { return null; }
+function mesAtualYYYYMM(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
 }
 
-function getNomeDoToken(){
-  const lsLider = String(localStorage.getItem("lider") || "").trim();
-  if (lsLider) return lsLider;
+function mesToRange(mesYYYYMM){
+  const [y, m] = String(mesYYYYMM || "").split("-");
+  if (!y || !m) return { ini:"", fim:"", ano:"" };
 
-  const payload = decodeTokenPayloadCompat(token);
-  if (!payload) return "";
-  return String(payload.lider || payload.nome || payload.name || "").trim();
+  const year = Number(y);
+  const month = Number(m); // 1..12
+  const lastDay = new Date(year, month, 0).getDate();
+
+  return {
+    ini: `${y}-${m}-01`,
+    fim: `${y}-${m}-${String(lastDay).padStart(2, "0")}`,
+    ano: y
+  };
 }
+
+function weekOfMonth(d){
+  return Math.floor((d.getDate()-1)/7)+1;
+}
+
+function parseISODateFlex(v){
+  const s = String(v||"").trim();
+  if (!s) return null;
+  const iso = s.slice(0,10);
+  const dt = new Date(`${iso}T00:00:00`);
+  return isNaN(dt.getTime()) ? null : dt;
+}
+
+/* ============================
+   ✅ META / GESTORES DEOP
+============================ */
+const META_MENSAL_POR_GESTOR = {
+  "ANDERSON DE ARAUJO VASCONCELOS": 6,
+  "EDEVALDO FELICIANO DA SILVA": 8,
+  "ALEXANDRE BATISTA DIAS": 3,
+  "DAVIDSON DA SILVA GOMES": 5,
+  "THOMAZ CHAVES DO NASCIMENTO": 8,
+  "WESLEY FERNANDES DE SOUZA": 10,
+  "JANSEN LACERDA DE OLIVEIRA JUNIOR": 10,
+  "FABIANO OLIVEIRA DE MENEZES": 5,
+  "CRISTIANO CAETANO MADEIRO": 10,
+  "NATHALIA HOLANDA VILHENA": 4,
+  "EDIVALDO DA SILVA BRANDAO NETO": 8,
+  "RENAN IGOR MENEZES DA SILVA": 0,
+  "MACIEL GOMES DE AGUIAR": 10,
+  "DELMIR BARBOSA MAXIMIANO": 10,
+  "FABIO LIMA DE FRANCA": 10,
+  "YURI VILMAR BATISTA MELO": 10,
+  "MARCONE HENRIQUE DA CRUZ": 10,
+  "RENATO LINS DE VASCONCELOS NETO": 10,
+  "FABRICIO ANDRE SILVA DE ARAUJO": 4,
+  "GERALDO PEDRO DA SILVA JUNIOR": 4,
+  "RICHARDSON SILVA DE OLIVEIRA": 4,
+  "FRANCISCO DE ASSIS PEREIRA JUNIOR": 4,
+  "FERNANDO ALVES PESSOA": 4,
+  "FRANCISCO BATISTA DE LIMA": 4,
+  "GIESY LAMOUNIER DE OLIVEIRA MACIEL": 4,
+  "JORGE LUIS MARQUES DOS SANTOS": 4
+};
+
+const GESTORES_DEOP = Object.keys(META_MENSAL_POR_GESTOR);
 
 /* ============================
    MAPA LÍDER -> REGIONAL
@@ -322,54 +303,16 @@ const REGIONAL_POR_LIDER = {
   "RICHARDSON SILVA DE OLIVEIRA": "LESTE"
 };
 
-function normName(s){
-  return String(s || "")
-    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-    .replace(/\s+/g," ").trim().toUpperCase();
-}
-
 /* ============================
-   DATAS
+   TOKEN: nome do usuário (fallback simples)
 ============================ */
-function mesAtualYYYYMM(){
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
-}
-function mesToRange(mesYYYYMM){
-  const [y, m] = String(mesYYYYMM || "").split("-");
-  if (!y || !m) return { ini:"", fim:"", ano:"" };
-
-  const year = Number(y);
-  const month = Number(m); // 1..12
-
-  // último dia do mês: Date(ano, mês, 0) => último dia do mês anterior,
-  // então usamos (month) como próximo mês no construtor (0-based internamente).
-  const lastDay = new Date(year, month, 0).getDate();
-
-  return {
-    ini: `${y}-${m}-01`,
-    fim: `${y}-${m}-${String(lastDay).padStart(2, "0")}`,
-    ano: y
-  };
-}
-
-function weekOfMonth(d){
-  return Math.floor((d.getDate()-1)/7)+1; // 1..5
-}
-function parseISODateFlex(v){
-  const s = String(v||"").trim();
-  if (!s) return null;
-  const iso = s.slice(0,10);
-  const dt = new Date(`${iso}T00:00:00`);
-  return isNaN(dt.getTime()) ? null : dt;
+function getNomeDoToken(){
+  return String(localStorage.getItem("lider") || "").trim();
 }
 
 /* ============================
    LOADERS
 ============================ */
-// ✅ gestores DEOP (quem tem meta)
-const GESTORES_DEOP = Object.keys(META_MENSAL_POR_GESTOR);
-
 async function carregarSupervisoresNoSelect(){
   const sel = document.getElementById("filtroSupervisor");
   if (!sel) return;
@@ -400,18 +343,16 @@ async function fetchInspecoesRange(ini, fim){
   return Array.isArray(data) ? data : (data.results || []);
 }
 
-async function fetchNaoConformidades(){
-  const res = await apiFetch(`/nao-conformidades`);
+async function fetchRankingColaboradores(){
+  const res = await apiFetch(`/ranking-colaboradores`);
   const text = await res.text();
   if (!res.ok) throw new Error(text);
-
   const data = JSON.parse(text);
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data.results)) return data.results;
-  return [];
+  return Array.isArray(data.results) ? data.results : [];
 }
-  const PATH_RESUMO_GESTORES = "/ranking-lideres"; 
-// 👆 EXEMPLO. Troque pelo endpoint que a página de Inspeções usa.
+
+/* ✅ ESTE É O ENDPOINT QUE PRECISA BATER COM A PÁGINA DE INSPEÇÕES */
+const PATH_RESUMO_GESTORES = "/ranking-lideres";
 
 async function fetchResumoGestores(ano){
   const qs = new URLSearchParams();
@@ -422,23 +363,18 @@ async function fetchResumoGestores(ano){
   if (!res.ok) throw new Error(text);
 
   const data = JSON.parse(text);
-  // tolerante: array direto ou {results:[]}
-  const rows = Array.isArray(data) ? data : (data.results || []);
-  return rows;
+  return Array.isArray(data) ? data : (data.results || []);
 }
 
-  function isGestorDEOP(nome){
-  return !!META_MENSAL_POR_GESTOR[String(nome||"").trim()];
+function isGestorDEOP(nome){
+  return Object.prototype.hasOwnProperty.call(META_MENSAL_POR_GESTOR, String(nome||"").trim());
 }
 
 function filtrarResumo(rows, regional, supervisor){
-  let out = (rows || []).filter(r => isGestorDEOP(r.lider || r.gestor || r.nome));
-
-  // normaliza nome do registro
-  out = out.map(r => ({
+  let out = (rows || []).map(r => ({
     ...r,
-    _lider: String(r.lider || r.gestor || r.nome || "").trim(),
-  }));
+    _lider: String(r.lider || r.gestor || r.nome || "").trim()
+  })).filter(r => isGestorDEOP(r._lider));
 
   if (regional){
     out = out.filter(r => (REGIONAL_POR_LIDER[r._lider] || "") === regional);
@@ -453,72 +389,7 @@ function filtrarResumo(rows, regional, supervisor){
 }
 
 function somarCampo(rows, campo){
-  return (rows || []).reduce((acc, r) => acc + Number(r[campo] || 0), 0);
-}
-
-async function fetchRankingColaboradores(){
-  const res = await apiFetch(`/ranking-colaboradores`);
-  const text = await res.text();
-  if (!res.ok) throw new Error(text);
-  const data = JSON.parse(text);
-  return Array.isArray(data.results) ? data.results : [];
-}
-
-/* ============================
-   FILTRO DE ESCOPO (Regional/Supervisor)
-============================ */
-function matchEscopoInspecao(item, regional, supervisor){
-  const lider = String(item?.lider || "").trim();
-  const reg = REGIONAL_POR_LIDER[lider] || "";
-
-  if (regional && reg !== regional) return false;
-
-  if (!supervisor) return true;
-
-  const alvo = normName(supervisor);
-  const campos = [
-    item?.cadastrante,
-    item?.lider,
-    item?.auditor_1,
-    item?.auditor_2,
-    item?.auditor_3
-  ].map(normName).filter(Boolean);
-
-  return campos.includes(alvo);
-}
-
-  function countParticipacaoSupervisor(inspecao, supervisor){
-  if (!supervisor) return 1; // sem supervisor: 1 por inspeção
-
-  const alvo = normName(supervisor);
-
-  const campos = [
-    inspecao?.cadastrante,
-    inspecao?.lider,
-    inspecao?.auditor_1,
-    inspecao?.auditor_2,
-    inspecao?.auditor_3
-  ].map(normName).filter(Boolean);
-
-  // ✅ conta quantas vezes aparece (participação)
-  return campos.filter(n => n === alvo).length;
-}
-
-function isInRegional(inspecao, regional){
-  if (!regional) return true;
-  const lider = String(inspecao?.lider || "").trim();
-  const reg = REGIONAL_POR_LIDER[lider] || "";
-  return reg === regional;
-}
-
-
-function matchEscopoNC(item, regional, supervisor){
-  const lider = String(item?.lider || "").trim();
-  const reg = REGIONAL_POR_LIDER[lider] || "";
-
-  if (regional && reg !== regional) return false;
-  if (supervisor && lider !== supervisor) return false;
-  return true;
+  return (rows || []).reduce((acc, r) => acc + Number(r?.[campo] || 0), 0);
 }
 
 /* ============================
@@ -552,60 +423,58 @@ function calcAbrangencia(inspecoesFiltradas, rankingFiltrado){
 }
 
 /* ============================
-   ✅ FALTAVA ESSA FUNÇÃO!
+   SEMANAS
 ============================ */
+function isInRegional(inspecao, regional){
+  if (!regional) return true;
+  const lider = String(inspecao?.lider || "").trim();
+  const reg = REGIONAL_POR_LIDER[lider] || "";
+  return reg === regional;
+}
+
+function countParticipacaoSupervisor(inspecao, supervisor){
+  if (!supervisor) return 1;
+  const alvo = normName(supervisor);
+  const campos = [
+    inspecao?.cadastrante,
+    inspecao?.lider,
+    inspecao?.auditor_1,
+    inspecao?.auditor_2,
+    inspecao?.auditor_3
+  ].map(normName).filter(Boolean);
+  return campos.filter(n => n === alvo).length;
+}
+
 function calcWeeksFromInspecoes(inspecoes, supervisor){
   const weeks = [0,0,0,0,0];
-
   (inspecoes || []).forEach(i=>{
     const dt = parseISODateFlex(i.data_inspecao);
     if(!dt) return;
-
     const w = weekOfMonth(dt);
     if(w < 1 || w > 5) return;
-
-    const inc = countParticipacaoSupervisor(i, supervisor); // ✅ 1 ou participações
-    weeks[w-1] += inc;
+    weeks[w-1] += countParticipacaoSupervisor(i, supervisor);
   });
-
   return weeks;
 }
 
 /* ============================
-   TOOLTIP (Canvas)
+   GRÁFICOS (Canvas)
 ============================ */
 function getTooltipEl(){ return document.getElementById("canvasTooltip"); }
-
 function showTip(text, clientX, clientY){
   const tip = getTooltipEl();
   if (!tip) return;
   tip.innerHTML = text;
   tip.style.display = "block";
-
   const pad = 12;
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-
   tip.style.left = (clientX + pad) + "px";
   tip.style.top  = (clientY + pad) + "px";
-
-  const r = tip.getBoundingClientRect();
-  let x = clientX + pad;
-  let y = clientY + pad;
-
-  if (r.right > vw - 8) x = clientX - r.width - pad;
-  if (r.bottom > vh - 8) y = clientY - r.height - pad;
-
-  tip.style.left = x + "px";
-  tip.style.top  = y + "px";
 }
-
 function hideTip(){
   const tip = getTooltipEl();
   if (!tip) return;
   tip.style.display = "none";
 }
-
 function attachCanvasTooltip(canvas){
   if (!canvas) return;
   if (canvas._tooltipBound) return;
@@ -625,30 +494,20 @@ function attachCanvasTooltip(canvas){
         hit = b; break;
       }
     }
-
     if (!hit) return hideTip();
 
-    showTip(
-      `<div class="muted">${hit.group}</div><div><b>${hit.series}</b>: ${hit.value}</div>`,
-      ev.clientX, ev.clientY
-    );
+    showTip(`<div class="muted">${hit.group}</div><div><b>${hit.series}</b>: ${hit.value}</div>`, ev.clientX, ev.clientY);
   });
 
   canvas.addEventListener("mouseleave", hideTip);
   window.addEventListener("scroll", hideTip, { passive:true });
 }
 
-/* ============================
-   GRÁFICOS (Canvas com tooltip)
-============================ */
 function drawBars(canvas, labels, valuesA, valuesB, labelA="A", labelB="B"){
   const ctx = canvas.getContext("2d");
-
   const W = canvas.clientWidth || 900;
   const H = canvas.clientHeight || 320;
-  canvas.width = W;
-  canvas.height = H;
-
+  canvas.width = W; canvas.height = H;
   ctx.clearRect(0,0,W,H);
 
   const pad = 40;
@@ -660,7 +519,6 @@ function drawBars(canvas, labels, valuesA, valuesB, labelA="A", labelB="B"){
 
   canvas._bars = [];
 
-  // eixos
   ctx.strokeStyle = "#ddd";
   ctx.beginPath();
   ctx.moveTo(pad, pad);
@@ -668,7 +526,6 @@ function drawBars(canvas, labels, valuesA, valuesB, labelA="A", labelB="B"){
   ctx.lineTo(W-pad, H-pad);
   ctx.stroke();
 
-  // grid
   ctx.fillStyle = "#666";
   ctx.font = "12px Segoe UI, Arial";
   const steps = 4;
@@ -697,24 +554,19 @@ function drawBars(canvas, labels, valuesA, valuesB, labelA="A", labelB="B"){
     const yA = (H-pad)-hA;
     const yB = (H-pad)-hB;
 
-    // A
     ctx.fillStyle = "rgba(0,151,206,.25)";
     ctx.strokeStyle = "rgba(0,151,206,.35)";
-    ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.rect(x0, yA, barW, hA);
     ctx.fill(); ctx.stroke();
-
     canvas._bars.push({ x:x0, y:yA, w:barW, h:hA, group: labels[i], series: labelA, value: valuesA[i] ?? 0 });
 
-    // B
     if (labelB){
       ctx.fillStyle = "rgba(255,99,71,.25)";
       ctx.strokeStyle = "rgba(255,99,71,.35)";
       ctx.beginPath();
       ctx.rect(x0+barW+gap, yB, barW, hB);
       ctx.fill(); ctx.stroke();
-
       canvas._bars.push({ x:x0+barW+gap, y:yB, w:barW, h:hB, group: labels[i], series: labelB, value: valuesB[i] ?? 0 });
     }
 
@@ -731,13 +583,8 @@ function drawWeeks(canvas, weeks){
 }
 
 /* ============================
-   DASHBOARD CORE
+   DASHBOARD
 ============================ */
-function nomeMes(mm){
-  const map = {"01":"Jan","02":"Fev","03":"Mar","04":"Abr","05":"Mai","06":"Jun","07":"Jul","08":"Ago","09":"Set","10":"Out","11":"Nov","12":"Dez"};
-  return map[mm] || mm;
-}
-
 async function atualizarDashboard(){
   try{
     setStatus("Carregando dados...", "");
@@ -745,45 +592,33 @@ async function atualizarDashboard(){
     const mes = document.getElementById("filtroMes")?.value || mesAtualYYYYMM();
     const regional = document.getElementById("filtroRegional")?.value || "";
     const supervisor = document.getElementById("filtroSupervisor")?.value || "";
-
     const { ini, fim, ano } = mesToRange(mes);
 
-    // ✅ 1) pega resumo oficial (igual página Inspeções)
+    // ✅ 1) Resumo igual página de inspeções
     const resumoAno = await fetchResumoGestores(ano);
-    const resumoFiltrado = filtrarResumo(resumoAno, regional, supervisor);
+    console.log("[DEBUG] resumoAno[0]:", resumoAno?.[0]);
 
-    // ⚠️ Aqui você precisa usar os MESMOS nomes de campo que a página de Inspeções mostra.
-    // Pelo seu print: "Total do ano" e "Soma não conformes"
-    // então vou assumir que o resumo vem assim:
-    // { lider: "...", total_ano: 14, soma_nao_conformes: 17, ... }
-    //
-    // Se o backend usa outros nomes, troca aqui:
+    const resumoFiltrado = filtrarResumo(resumoAno, regional, supervisor);
+    console.log("[DEBUG] resumoFiltrado[0]:", resumoFiltrado?.[0]);
+
+    // ⚠️ AJUSTE ESTES CAMPOS PARA OS NOMES REAIS DO SEU /ranking-lideres:
     const qtdInspecoesAno = somarCampo(resumoFiltrado, "total_ano");
     const qtdNC_Ano = somarCampo(resumoFiltrado, "soma_nao_conformes");
 
-    // ✅ Se você quer KPI do MÊS (não do ano), então o resumo precisa trazer total_mes / nc_mes,
-    // ou você usa outro endpoint/resumo por mês.
-    // Se existir:
-    const qtdInspecoesMes = somarCampo(resumoFiltrado, "total_mes");   // se existir
-    const qtdNC_Mes = somarCampo(resumoFiltrado, "nc_mes");           // se existir
-
-    // Mostra no KPI (escolha a lógica)
-    document.getElementById("kpiInspecoes").textContent =
-      Number.isFinite(qtdInspecoesMes) && qtdInspecoesMes > 0 ? qtdInspecoesMes : qtdInspecoesAno;
-
-    document.getElementById("kpiNC").textContent =
-      Number.isFinite(qtdNC_Mes) && qtdNC_Mes > 0 ? qtdNC_Mes : qtdNC_Ano;
+    document.getElementById("kpiInspecoes").textContent = qtdInspecoesAno;
+    document.getElementById("kpiNC").textContent = qtdNC_Ano;
 
     document.getElementById("kpiInspecoesSub").textContent =
       supervisor ? `Supervisor: ${supervisor}` : (regional ? `Regional: ${regional}` : "Geral (todas regionais)");
 
     document.getElementById("kpiNCSub").textContent =
-      `Escopo do mês ${mes} • (filtro Regional/Supervisor aplicado)`;
+      `Ano ${ano} • (filtro Regional/Supervisor aplicado)`;
 
-    // ✅ 2) Abrangência continua usando inspeções reais + ranking-colaboradores
+    // ✅ 2) Abrangência (mês)
     const inspecoesMes = await fetchInspecoesRange(ini, fim);
     const inspecoesRegional = inspecoesMes.filter(i => isInRegional(i, regional));
-    const inspecoesFiltradas = inspecoesRegional.filter(i => matchEscopoInspecao(i, regional, supervisor));
+    const weeks = calcWeeksFromInspecoes(inspecoesRegional, supervisor);
+    drawWeeks(document.getElementById("cvFrequencia"), weeks);
 
     const ranking = await fetchRankingColaboradores();
     const rankingFiltrado = ranking.filter(r=>{
@@ -794,13 +629,9 @@ async function atualizarDashboard(){
       return true;
     });
 
-    const ab = calcAbrangencia(inspecoesFiltradas, rankingFiltrado);
+    const ab = calcAbrangencia(inspecoesRegional, rankingFiltrado);
     document.getElementById("kpiAbrangencia").textContent = `${ab.pct.toFixed(1).replace(".",",")}%`;
     document.getElementById("kpiAbrangenciaSub").textContent = `${ab.inspecionados} inspecionados / ${ab.total} total`;
-
-    // ✅ 3) Gráficos (semanas ainda usa inspeções reais do mês)
-    const weeks = calcWeeksFromInspecoes(inspecoesRegional, supervisor);
-    drawWeeks(document.getElementById("cvFrequencia"), weeks);
 
     setStatus(`Dashboard atualizado • Mês ${mes}`, "success");
   } catch(e){
@@ -826,6 +657,5 @@ async function atualizarDashboard(){
   atualizarDashboard();
 })();
 </script>
-
 </body>
 </html>
