@@ -724,7 +724,7 @@ async function atualizarDashboard(){
     const ab = calcAbrangencia(inspecoesFiltradas, rankingFiltrado);
 
     // KPIs
-    document.getElementById("kpiInspecoes").textContent = inspecoesFiltradas.length;
+   document.getElementById("kpiInspecoes").textContent = qtdInspecoes;
     document.getElementById("kpiInspecoesSub").textContent =
       supervisor ? `Supervisor: ${supervisor}` : (regional ? `Regional: ${regional}` : "Geral (todas regionais)");
 
@@ -746,32 +746,35 @@ async function atualizarDashboard(){
     const insAno = [];
     const ncAno = [];
 
-    for(let mm=1; mm<=12; mm++){
-      const mesKey = `${ano}-${String(mm).padStart(2,"0")}`;
-      const r = mesToRange(mesKey);
+    for (let mm = 1; mm <= 12; mm++) {
+  const mesKey = `${ano}-${String(mm).padStart(2, "0")}`;
+  const r = mesToRange(mesKey);
 
-      const ins = await fetchInspecoesRange(r.ini, r.fim);
-      cconst insRegional = ins.filter(i => isInRegional(i, regional));
+  const ins = await fetchInspecoesRange(r.ini, r.fim);
+  const insRegional = ins.filter(i => isInRegional(i, regional)); // ✅ era cconst
 
-const qtdMes = insRegional.reduce((acc, it) => {
-  if (supervisor) return acc + countParticipacaoSupervisor(it, supervisor);
-  return acc + 1;
-}, 0);
+  const qtdMes = insRegional.reduce((acc, it) => {
+    if (supervisor) return acc + countParticipacaoSupervisor(it, supervisor);
+    return acc + 1;
+  }, 0);
 
-insAno.push(qtdMes);
+  insAno.push(qtdMes);
 
-      const ncsMes = ncsFiltradas.filter(nc=>{
-        const dt =
-          parseISODateFlex(nc.inicio_acao) ||
-          parseISODateFlex(nc.termino_acao) ||
-          parseISODateFlex(nc.inicio) ||
-          parseISODateFlex(nc.termino);
-        if(!dt) return false;
-        const mk = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}`;
-        return mk === mesKey;
-      });
-     
- }
+  const ncsMes = ncsFiltradas.filter(nc => {
+    const dt =
+      parseISODateFlex(nc.inicio_acao) ||
+      parseISODateFlex(nc.termino_acao) ||
+      parseISODateFlex(nc.inicio) ||
+      parseISODateFlex(nc.termino);
+    if (!dt) return false;
+
+    const mk = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
+    return mk === mesKey;
+  });
+
+  ncAno.push(ncsMes.length); // ✅ faltava isso
+}
+
 
     drawBars(document.getElementById("cvAno"), labelsAno, insAno, ncAno, "Inspeções", "NC");
 
