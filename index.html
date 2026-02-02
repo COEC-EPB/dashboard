@@ -628,24 +628,41 @@ function nomeMes(mm){
 /* ============================
    SELECTS
 ============================ */
+function getGestoresDoMapa(regionalSelecionada = ""){
+  const lideres = Object.keys(REGIONAL_POR_LIDER || {});
+
+  // se escolheu regional, filtra só os gestores daquela regional
+  const filtrados = regionalSelecionada
+    ? lideres.filter(l => (REGIONAL_POR_LIDER[l] || "") === regionalSelecionada)
+    : lideres;
+
+  // ordena bonitinho
+  return filtrados.sort((a,b)=> normName(a).localeCompare(normName(b)));
+}
+
 async function carregarSupervisoresNoSelect(){
   const sel = document.getElementById("filtroSupervisor");
   if (!sel) return;
 
-  // usa /lideres (já respeita delegação/admin/super no Worker)
-  const lideres = (await fetchLideres())
-    .slice()
-    .sort((a,b)=> normName(a).localeCompare(normName(b)));
+  const regional = document.getElementById("filtroRegional")?.value || "";
 
+  const lideres = getGestoresDoMapa(regional);
+
+  const valorAtual = sel.value || "";
   sel.innerHTML =
     `<option value="">Todos</option>` +
     lideres.map(l => `<option value="${String(l).replaceAll('"',"&quot;")}">${l}</option>`).join("");
 
-  const meu = normName(getNomeDoToken());
-  const found = lideres.find(x => normName(x) === meu);
-  if (found) sel.value = found;
+  // tenta manter o selecionado (se ainda existir)
+  if (valorAtual && lideres.some(x => normName(x) === normName(valorAtual))){
+    sel.value = valorAtual;
+  } else {
+    // se não, tenta setar o próprio usuário
+    const meu = normName(getNomeDoToken());
+    const found = lideres.find(x => normName(x) === meu);
+    if (found) sel.value = found;
+  }
 }
-
 /* ============================
    DASHBOARD CORE
 ============================ */
@@ -748,7 +765,10 @@ async function atualizarDashboard(){
 
   document.getElementById("btnAtualizar")?.addEventListener("click", atualizarDashboard);
   document.getElementById("filtroMes")?.addEventListener("change", atualizarDashboard);
-  document.getElementById("filtroRegional")?.addEventListener("change", atualizarDashboard);
+  document.getElementById("filtroRegional")?.addEventListener("change", () => {
+  carregarSupervisoresNoSelect();   // ✅ refaz a lista conforme a regional
+  atualizarDashboard();            // ✅ aplica filtros
+});
   document.getElementById("filtroSupervisor")?.addEventListener("change", atualizarDashboard);
 
   atualizarDashboard();
