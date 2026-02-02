@@ -367,14 +367,19 @@ function parseISODateFlex(v){
 /* ============================
    LOADERS
 ============================ */
+// ✅ gestores DEOP (quem tem meta)
+const GESTORES_DEOP = Object.keys(META_MENSAL_POR_GESTOR);
+
 async function carregarSupervisoresNoSelect(){
   const sel = document.getElementById("filtroSupervisor");
   if (!sel) return;
 
-  const lideres = Object.keys(REGIONAL_POR_LIDER)
+  const lideres = GESTORES_DEOP
+    .slice()
     .sort((a,b)=> normName(a).localeCompare(normName(b)));
 
-  sel.innerHTML = `<option value="">Todos</option>` +
+  sel.innerHTML =
+    `<option value="">Todos</option>` +
     lideres.map(l => `<option value="${l.replaceAll('"',"&quot;")}">${l}</option>`).join("");
 
   const meu = normName(getNomeDoToken());
@@ -404,6 +409,51 @@ async function fetchNaoConformidades(){
   if (Array.isArray(data)) return data;
   if (Array.isArray(data.results)) return data.results;
   return [];
+}
+  const PATH_RESUMO_GESTORES = "/ranking-lideres"; 
+// 👆 EXEMPLO. Troque pelo endpoint que a página de Inspeções usa.
+
+async function fetchResumoGestores(ano){
+  const qs = new URLSearchParams();
+  if (ano) qs.set("ano", ano);
+
+  const res = await apiFetch(`${PATH_RESUMO_GESTORES}?${qs.toString()}`);
+  const text = await res.text();
+  if (!res.ok) throw new Error(text);
+
+  const data = JSON.parse(text);
+  // tolerante: array direto ou {results:[]}
+  const rows = Array.isArray(data) ? data : (data.results || []);
+  return rows;
+}
+
+  function isGestorDEOP(nome){
+  return !!META_MENSAL_POR_GESTOR[String(nome||"").trim()];
+}
+
+function filtrarResumo(rows, regional, supervisor){
+  let out = (rows || []).filter(r => isGestorDEOP(r.lider || r.gestor || r.nome));
+
+  // normaliza nome do registro
+  out = out.map(r => ({
+    ...r,
+    _lider: String(r.lider || r.gestor || r.nome || "").trim(),
+  }));
+
+  if (regional){
+    out = out.filter(r => (REGIONAL_POR_LIDER[r._lider] || "") === regional);
+  }
+
+  if (supervisor){
+    const alvo = normName(supervisor);
+    out = out.filter(r => normName(r._lider) === alvo);
+  }
+
+  return out;
+}
+
+function somarCampo(rows, campo){
+  return (rows || []).reduce((acc, r) => acc + Number(r[campo] || 0), 0);
 }
 
 async function fetchRankingColaboradores(){
@@ -691,39 +741,50 @@ function nomeMes(mm){
 async function atualizarDashboard(){
   try{
     setStatus("Carregando dados...", "");
+
     const mes = document.getElementById("filtroMes")?.value || mesAtualYYYYMM();
     const regional = document.getElementById("filtroRegional")?.value || "";
     const supervisor = document.getElementById("filtroSupervisor")?.value || "";
 
-    const {ini, fim, ano} = mesToRange(mes);
+    const { ini, fim, ano } = mesToRange(mes);
 
-    // 1) inspeções mês (KPI + semanas)
+    // ✅ 1) pega resumo oficial (igual página Inspeções)
+    const resumoAno = await fetchResumoGestores(ano);
+    const resumoFiltrado = filtrarResumo(resumoAno, regional, supervisor);
+
+    // ⚠️ Aqui você precisa usar os MESMOS nomes de campo que a página de Inspeções mostra.
+    // Pelo seu print: "Total do ano" e "Soma não conformes"
+    // então vou assumir que o resumo vem assim:
+    // { lider: "...", total_ano: 14, soma_nao_conformes: 17, ... }
+    //
+    // Se o backend usa outros nomes, troca aqui:
+    const qtdInspecoesAno = somarCampo(resumoFiltrado, "total_ano");
+    const qtdNC_Ano = somarCampo(resumoFiltrado, "soma_nao_conformes");
+
+    // ✅ Se você quer KPI do MÊS (não do ano), então o resumo precisa trazer total_mes / nc_mes,
+    // ou você usa outro endpoint/resumo por mês.
+    // Se existir:
+    const qtdInspecoesMes = somarCampo(resumoFiltrado, "total_mes");   // se existir
+    const qtdNC_Mes = somarCampo(resumoFiltrado, "nc_mes");           // se existir
+
+    // Mostra no KPI (escolha a lógica)
+    document.getElementById("kpiInspecoes").textContent =
+      Number.isFinite(qtdInspecoesMes) && qtdInspecoesMes > 0 ? qtdInspecoesMes : qtdInspecoesAno;
+
+    document.getElementById("kpiNC").textContent =
+      Number.isFinite(qtdNC_Mes) && qtdNC_Mes > 0 ? qtdNC_Mes : qtdNC_Ano;
+
+    document.getElementById("kpiInspecoesSub").textContent =
+      supervisor ? `Supervisor: ${supervisor}` : (regional ? `Regional: ${regional}` : "Geral (todas regionais)");
+
+    document.getElementById("kpiNCSub").textContent =
+      `Escopo do mês ${mes} • (filtro Regional/Supervisor aplicado)`;
+
+    // ✅ 2) Abrangência continua usando inspeções reais + ranking-colaboradores
     const inspecoesMes = await fetchInspecoesRange(ini, fim);
-
-    // lista base (regional sempre pelo "dono" da inspeção)
     const inspecoesRegional = inspecoesMes.filter(i => isInRegional(i, regional));
-    
-    // lista usada para ABRANGÊNCIA e outras coisas que precisam ser inspeção "de verdade"
     const inspecoesFiltradas = inspecoesRegional.filter(i => matchEscopoInspecao(i, regional, supervisor));
-    
-    // ✅ KPI/Contagem igual página de inspeções
-    const qtdInspecoes = inspecoesRegional.reduce((acc, i) => {
-      // se tem supervisor: só soma se ele participou (e soma quantidade de participações)
-      if (supervisor) {
-        return acc + countParticipacaoSupervisor(i, supervisor);
-      }
-      // sem supervisor: 1 por inspeção
-      return acc + 1;
-    }, 0);
-    
-    document.getElementById("kpiInspecoes").textContent = qtdInspecoes;
 
-    // 2) NC (KPI)
-    const ncs = await fetchNaoConformidades();
-    const ncsFiltradas = ncs.filter(nc => matchEscopoNC(nc, regional, supervisor));
-    const totalNC = ncsFiltradas.length;
-
-    // 3) abrangência
     const ranking = await fetchRankingColaboradores();
     const rankingFiltrado = ranking.filter(r=>{
       const liderR = String(r.lider||"").trim();
@@ -734,61 +795,12 @@ async function atualizarDashboard(){
     });
 
     const ab = calcAbrangencia(inspecoesFiltradas, rankingFiltrado);
-
-    // KPIs
-   document.getElementById("kpiInspecoes").textContent = qtdInspecoes;
-    document.getElementById("kpiInspecoesSub").textContent =
-      supervisor ? `Supervisor: ${supervisor}` : (regional ? `Regional: ${regional}` : "Geral (todas regionais)");
-
-    document.getElementById("kpiNC").textContent = totalNC;
-    document.getElementById("kpiNCSub").textContent =
-      `Escopo do mês ${mes} • (filtro Regional/Supervisor aplicado)`;
-
     document.getElementById("kpiAbrangencia").textContent = `${ab.pct.toFixed(1).replace(".",",")}%`;
-    document.getElementById("kpiAbrangenciaSub").textContent =
-      `${ab.inspecionados} inspecionados / ${ab.total} total`;
+    document.getElementById("kpiAbrangenciaSub").textContent = `${ab.inspecionados} inspecionados / ${ab.total} total`;
 
-    // semanas
+    // ✅ 3) Gráficos (semanas ainda usa inspeções reais do mês)
     const weeks = calcWeeksFromInspecoes(inspecoesRegional, supervisor);
     drawWeeks(document.getElementById("cvFrequencia"), weeks);
-
-    // ano (agrega mês a mês)
-    const labelsAno = ["01","02","03","04","05","06","07","08","09","10","11","12"].map(nomeMes);
-
-    const insAno = [];
-    const ncAno = [];
-
-    for (let mm = 1; mm <= 12; mm++) {
-  const mesKey = `${ano}-${String(mm).padStart(2, "0")}`;
-  const r = mesToRange(mesKey);
-
-  const ins = await fetchInspecoesRange(r.ini, r.fim);
-  const insRegional = ins.filter(i => isInRegional(i, regional)); // ✅ era cconst
-
-  const qtdMes = insRegional.reduce((acc, it) => {
-    if (supervisor) return acc + countParticipacaoSupervisor(it, supervisor);
-    return acc + 1;
-  }, 0);
-
-  insAno.push(qtdMes);
-
-  const ncsMes = ncsFiltradas.filter(nc => {
-    const dt =
-      parseISODateFlex(nc.inicio_acao) ||
-      parseISODateFlex(nc.termino_acao) ||
-      parseISODateFlex(nc.inicio) ||
-      parseISODateFlex(nc.termino);
-    if (!dt) return false;
-
-    const mk = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
-    return mk === mesKey;
-  });
-
-  ncAno.push(ncsMes.length); // ✅ faltava isso
-}
-
-
-    drawBars(document.getElementById("cvAno"), labelsAno, insAno, ncAno, "Inspeções", "NC");
 
     setStatus(`Dashboard atualizado • Mês ${mes}`, "success");
   } catch(e){
