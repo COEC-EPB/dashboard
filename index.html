@@ -336,9 +336,21 @@ function mesAtualYYYYMM(){
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
 }
 function mesToRange(mesYYYYMM){
-  const [y,m] = String(mesYYYYMM||"").split("-");
-  if (!y || !m) return {ini:"", fim:"", ano:""};
-  return { ini:`${y}-${m}-01`, fim:`${y}-${m}-31`, ano:y };
+  const [y, m] = String(mesYYYYMM || "").split("-");
+  if (!y || !m) return { ini:"", fim:"", ano:"" };
+
+  const year = Number(y);
+  const month = Number(m); // 1..12
+
+  // último dia do mês: Date(ano, mês, 0) => último dia do mês anterior,
+  // então usamos (month) como próximo mês no construtor (0-based internamente).
+  const lastDay = new Date(year, month, 0).getDate();
+
+  return {
+    ini: `${y}-${m}-01`,
+    fim: `${y}-${m}-${String(lastDay).padStart(2, "0")}`,
+    ano: y
+  };
 }
 
 function weekOfMonth(d){
