@@ -449,6 +449,9 @@ function calcAbrangencia(inspecoesFiltradas, rankingFiltrado){
     splitNomesCampo(i.auditados).forEach(n => inspSet.add(normName(n)));
     splitNomesCampo(i.colaborador_1).forEach(n => inspSet.add(normName(n)));
     splitNomesCampo(i.colaborador_2).forEach(n => inspSet.add(normName(n)));
+    splitNomesCampo(i.colaborador_3).forEach(n => inspSet.add(normName(n)));
+    splitNomesCampo(i.colaborador_4).forEach(n => inspSet.add(normName(n)));
+    splitNomesCampo(i.colaborador_5).forEach(n => inspSet.add(normName(n)));
   });
 
   const total = totalSet.size;
