@@ -705,12 +705,16 @@ async function atualizarDashboard(){
     const { ini, fim, ano, mm } = mesToRange(mes);
 
     // ========= 1) KPIs + gráfico do ano (OFICIAL: /stats-mensal)
+    // Obs: se supervisor vazio => "geral" (admin/super vê geral; user normal o Worker força pra ele)
     const stats = await fetchStatsMensal(ano, supervisor);
 
-    const rowMes =
-      (stats.por_mes || []).find(r => String(r.mes).padStart(2,"0") === String(mm).padStart(2,"0"))
-      || { total: 0, soma_nao_conforme: 0 };
+    const rowMes = (stats.por_mes || []).find(r => String(r.mes) === String(mm)) || { total: 0, soma_nao_conforme: 0 };
 
+    // aplica filtro REGIONAL no front (porque /stats-mensal não tem regional)
+    // se tiver regional selecionada:
+    // - para "Todos": soma só líderes daquela regional usando stats por líder não existe.
+    // Então aqui: quando regional != "" e supervisor == "" => não dá pra filtrar corretamente sem endpoint.
+    // Vamos ser honestos e mostrar aviso.
     if (regional && !supervisor){
       setStatus("⚠️ Para filtrar por Regional sem escolher Supervisor, precisa de endpoint que agreg incluindo regional.", "error");
     }
@@ -725,22 +729,18 @@ async function atualizarDashboard(){
     document.getElementById("kpiNCSub").textContent =
       `Escopo do mês ${mes} • (via /stats-mensal)`;
 
-    // gráfico do ano (garante 12 meses)
+    // gráfico do ano
     const labelsAno = ["01","02","03","04","05","06","07","08","09","10","11","12"].map(nomeMes);
-
-    const porMesMap = new Map();
-    (stats.por_mes || []).forEach(r => porMesMap.set(String(r.mes).padStart(2,"0"), r));
-
     const insAno = [];
     const ncAno  = [];
-    for (const m of ["01","02","03","04","05","06","07","08","09","10","11","12"]){
-      const r = porMesMap.get(m) || {};
+    for (const r of (stats.por_mes || [])){
       insAno.push(Number(r.total || 0));
       ncAno.push(Number(r.soma_nao_conforme || 0));
     }
     drawBars(document.getElementById("cvAno"), labelsAno, insAno, ncAno, "Inspeções", "NC");
 
     // ========= 2) Frequência semanal (OFICIAL: /frequencia)
+    // /frequencia exige gestor. Se "Todos", não dá (precisa endpoint agregador).
     if (supervisor){
       const freq = await fetchFrequencia(mes, supervisor);
       const weeks = Array.isArray(freq.weeks) ? freq.weeks : [0,0,0,0,0];
@@ -749,69 +749,58 @@ async function atualizarDashboard(){
       drawWeeks(document.getElementById("cvFrequencia"), [0,0,0,0,0]);
     }
 
-    // ========= 3) Abrangência (ANUAL) - CORRIGIDO
-    // pega ano inteiro do ano do mês selecionado
-    const iniAno = `${ano}-01-01`;
-    const fimAno = `${ano}-12-31`;
+    // ========= 3) Abrangência (inspeções reais do mês + ranking-colaboradores)
+    // Para supervisor vazio:
+    // - /inspecoes sem liderParam (admin/super => geral, user => ele)
+    // Para supervisor preenchido:
+    // - /inspecoes?lider= (já filtra por participação no Worker)
+    // ========= 3) Abrangência (inspeções reais do ANO + ranking-colaboradores)
 
-    // 3.1) pega inspeções do ano SEM passar supervisor no backend
-    //      porque /inspecoes?lider= filtra por participação e pode "igualar" os resultados
-    let inspecoesAnoAll = await fetchInspecoesRange(iniAno, fimAno, "");
+// pega ano inteiro do ano do mês selecionado
+const iniAno = `${ano}-01-01`;
+const fimAno = `${ano}-12-31`;
 
-    // 3.2) se escolheu supervisor, filtra AQUI pelo líder real da inspeção (campo i.lider)
-    if (supervisor) {
-      inspecoesAnoAll = inspecoesAnoAll.filter(i =>
-        normName(i.lider) === normName(supervisor)
-      );
-    }
+// inspeções do ano (não do mês)
+const inspecoesAno = await fetchInspecoesRange(iniAno, fimAno, supervisor);
 
-    // 3.3) filtro regional no front
-    const inspecoesAnoRegional = !regional
-      ? inspecoesAnoAll
-      : inspecoesAnoAll.filter(i => isInRegionalByLiderNome(i.lider, regional));
+// filtro regional no front
+const inspecoesAnoRegional = !regional
+  ? inspecoesAno
+  : inspecoesAno.filter(i => isInRegionalByLiderNome(i.lider, regional));
 
-    // 3.4) ranking do time
-    const ranking = await fetchRankingColaboradores();
+// ranking do time (continua igual)
+const ranking = await fetchRankingColaboradores();
 
-    const rankingFiltrado = (ranking || []).filter(r=>{
-      const liderR = String(r.lider||"").trim();
-      if (regional && !isInRegionalByLiderNome(liderR, regional)) return false;
-      if (supervisor && normName(liderR) !== normName(supervisor)) return false;
-      return true;
-    });
+const rankingFiltrado = (ranking || []).filter(r=>{
+  const liderR = String(r.lider||"").trim();
+  if (regional && !isInRegionalByLiderNome(liderR, regional)) return false;
+  if (supervisor && normName(liderR) !== normName(supervisor)) return false;
+  return true;
+});
 
-    // 3.5) abrangência anual
-    const ab = calcAbrangencia(inspecoesAnoRegional, rankingFiltrado);
+// abrangência anual
+const ab = calcAbrangencia(inspecoesAnoRegional, rankingFiltrado);
 
-    document.getElementById("kpiAbrangencia").textContent =
-      `${ab.pct.toFixed(1).replace(".",",")}%`;
+document.getElementById("kpiAbrangencia").textContent =
+  `${ab.pct.toFixed(1).replace(".",",")}%`;
 
-    const faltamColabs = Math.max(0, ab.total - ab.inspecionados);
+const faltamColabs = Math.max(0, ab.total - ab.inspecionados);
+document.getElementById("kpiAbrangenciaSub").textContent =
+  `${ab.inspecionados} inspecionados / ${ab.total} total • Faltam: ${faltamColabs}`;
 
-    document.getElementById("kpiAbrangenciaSub").textContent =
-      `${ab.inspecionados} inspecionados / ${ab.total} total • Faltam: ${faltamColabs}`;
+// ---- Prazo fixo: começa 03/02/2026 e dura 4 meses ----
+const inicioPrazo = new Date("2026-02-03T00:00:00");
+const fimPrazo = addMonths(inicioPrazo, 4); // 4 meses depois
 
-    // ---- Prazo fixo: começa 03/02/2026 e dura 4 meses ----
-    const inicioPrazo = new Date("2026-02-03T00:00:00");
-    const fimPrazoDate = addMonths(inicioPrazo, 4);
+const hoje = new Date();
+const diasTotais = Math.max(0, diffDays(inicioPrazo, fimPrazo));
+const diasRestantes = Math.max(0, diffDays(hoje, fimPrazo));
 
-    const hoje = new Date();
-    const diasTotais = Math.max(0, diffDays(inicioPrazo, fimPrazoDate));
-    const diasRestantes = Math.max(0, diffDays(hoje, fimPrazoDate));
-
-    const elPrazo = document.getElementById("kpiAbrangenciaPrazo");
-    if (elPrazo) {
-      elPrazo.textContent =
-        `Prazo: ${diasRestantes} dia(s) restantes • até ${formatarDataBR(fimPrazoDate.toISOString().slice(0,10))} (total ${diasTotais} dias)`;
-    }
-
-    setStatus(`Dashboard atualizado • Mês ${mes}`, "success");
-  } catch(e){
-    console.error(e);
-    setStatus("Erro ao carregar dashboard (veja o console).", "error");
-  }
+const elPrazo = document.getElementById("kpiAbrangenciaPrazo");
+if (elPrazo) {
+  elPrazo.textContent =
+    `Prazo: ${diasRestantes} dia(s) restantes • até ${formatarDataBR(fimPrazo.toISOString().slice(0,10))} (total ${diasTotais} dias)`;
 }
-
 
 /* ============================
    INIT
