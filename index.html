@@ -752,63 +752,59 @@ async function atualizarDashboard(){
       drawWeeks(document.getElementById("cvFrequencia"), [0,0,0,0,0]);
     }
 
-   // ========= 3) Abrangência (ANUAL) - corrigido (filtra pelo i.lider de verdade)
+    // ========= 3) Abrangência (ANUAL)
+    // pega ano inteiro do ano do mês selecionado
+    const iniAno = `${ano}-01-01`;
+    const fimAno = `${ano}-12-31`;
 
-// pega ano inteiro do ano do mês selecionado
-const iniAno = `${ano}-01-01`;
-const fimAno = `${ano}-12-31`;
+    // inspeções do ano (não do mês)
+    const inspecoesAno = await fetchInspecoesRange(iniAno, fimAno, supervisor);
 
-// 1) pega inspeções do ano SEM filtrar no backend por "lider"
-// (porque o endpoint /inspecoes filtra por participação e pode "igualar" os resultados)
-const inspecoesAnoAll = await fetchInspecoesRange(iniAno, fimAno, "");
+    // filtro regional no front
+    const inspecoesAnoRegional = !regional
+      ? inspecoesAno
+      : inspecoesAno.filter(i => isInRegionalByLiderNome(i.lider, regional));
 
-// 2) se escolheu supervisor, filtra aqui pelo líder real da inspeção (campo i.lider)
-let inspecoesAnoFiltradas = inspecoesAnoAll;
-if (supervisor) {
-  inspecoesAnoFiltradas = inspecoesAnoFiltradas.filter(i =>
-    normName(i.lider) === normName(supervisor)
-  );
-}
+    // ranking do time (continua igual)
+    const ranking = await fetchRankingColaboradores();
 
-// 3) filtro regional (continua igual)
-if (regional) {
-  inspecoesAnoFiltradas = inspecoesAnoFiltradas.filter(i =>
-    isInRegionalByLiderNome(i.lider, regional)
-  );
-}
+    const rankingFiltrado = (ranking || []).filter(r=>{
+      const liderR = String(r.lider||"").trim();
+      if (regional && !isInRegionalByLiderNome(liderR, regional)) return false;
+      if (supervisor && normName(liderR) !== normName(supervisor)) return false;
+      return true;
+    });
 
-// ranking do time (continua igual)
-const ranking = await fetchRankingColaboradores();
+    // abrangência anual
+    const ab = calcAbrangencia(inspecoesAnoRegional, rankingFiltrado);
 
-const rankingFiltrado = (ranking || []).filter(r=>{
-  const liderR = String(r.lider||"").trim();
-  if (regional && !isInRegionalByLiderNome(liderR, regional)) return false;
-  if (supervisor && normName(liderR) !== normName(supervisor)) return false;
-  return true;
-});
+    document.getElementById("kpiAbrangencia").textContent =
+      `${ab.pct.toFixed(1).replace(".",",")}%`;
 
-// abrangência anual
-const ab = calcAbrangencia(inspecoesAnoFiltradas, rankingFiltrado);
+    const faltamColabs = Math.max(0, ab.total - ab.inspecionados);
 
-document.getElementById("kpiAbrangencia").textContent =
-  `${ab.pct.toFixed(1).replace(".",",")}%`;
+    document.getElementById("kpiAbrangenciaSub").textContent =
+      `${ab.inspecionados} inspecionados / ${ab.total} total • Faltam: ${faltamColabs}`;
 
-const faltamColabs = Math.max(0, ab.total - ab.inspecionados);
-document.getElementById("kpiAbrangenciaSub").textContent =
-  `${ab.inspecionados} inspecionados / ${ab.total} total • Faltam: ${faltamColabs}`;
+    // ---- Prazo fixo: começa 03/02/2026 e dura 4 meses ----
+    const inicioPrazo = new Date("2026-02-03T00:00:00");
+    const fimPrazo = addMonths(inicioPrazo, 4); // 4 meses depois
 
-// ---- Prazo fixo: começa 03/02/2026 e dura 4 meses ----
-const inicioPrazo = new Date("2026-02-03T00:00:00");
-const fimPrazo = addMonths(inicioPrazo, 4);
+    const hoje = new Date();
+    const diasTotais = Math.max(0, diffDays(inicioPrazo, fimPrazo));
+    const diasRestantes = Math.max(0, diffDays(hoje, fimPrazo));
 
-const hoje = new Date();
-const diasTotais = Math.max(0, diffDays(inicioPrazo, fimPrazo));
-const diasRestantes = Math.max(0, diffDays(hoje, fimPrazo));
+    const elPrazo = document.getElementById("kpiAbrangenciaPrazo");
+    if (elPrazo) {
+      elPrazo.textContent =
+        `Prazo: ${diasRestantes} dia(s) restantes • até ${formatarDataBR(fimPrazo.toISOString().slice(0,10))} (total ${diasTotais} dias)`;
+    }
 
-const elPrazo = document.getElementById("kpiAbrangenciaPrazo");
-if (elPrazo) {
-  elPrazo.textContent =
-    `Prazo: ${diasRestantes} dia(s) restantes • até ${formatarDataBR(fimPrazo.toISOString().slice(0,10))} (total ${diasTotais} dias)`;
+    setStatus(`Dashboard atualizado • Mês ${mes}`, "success");
+  } catch(e){
+    console.error(e);
+    setStatus("Erro ao carregar dashboard (veja o console).", "error");
+  }
 }
 
 /* ============================
