@@ -190,12 +190,13 @@
       </div>
 
       <div class="card pad" style="grid-column: span 4;">
-        <div class="kpi">
-          <div class="label">Abrangência</div>
-          <div class="value" id="kpiAbrangencia">0%</div>
-          <div class="sub" id="kpiAbrangenciaSub">0 inspecionados / 0 total</div>
-        </div>
-      </div>
+       <div class="kpi">
+    <div class="label">Abrangência</div>
+    <div class="value" id="kpiAbrangencia">0%</div>
+    <div class="sub" id="kpiAbrangenciaSub">0 inspecionados / 0 total</div>
+    <div class="sub" id="kpiAbrangenciaPrazo">—</div>
+  </div>
+</div>
     </div>
 
     <!-- Gráficos -->
@@ -230,6 +231,30 @@
    CONFIG / SESSÃO
 ============================ */
 const API = "https://inspecoes.pedro-fillype.workers.dev";
+
+  function formatarDataBR(iso){
+  // iso yyyy-mm-dd
+  const s = String(iso || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return s || "-";
+  const [y,m,d] = s.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+function addMonths(dateObj, months){
+  const d = new Date(dateObj.getTime());
+  const day = d.getDate();
+  d.setMonth(d.getMonth() + Number(months || 0));
+
+  // ajuste para meses menores (ex: 31 -> 30/28)
+  if (d.getDate() < day) d.setDate(0);
+  return d;
+}
+
+function diffDays(a, b){
+  // diferença em dias inteiros entre datas (b - a)
+  const ms = b.getTime() - a.getTime();
+  return Math.ceil(ms / (1000 * 60 * 60 * 24));
+}
 
 function logout(){
   localStorage.removeItem("logado");
@@ -729,32 +754,52 @@ async function atualizarDashboard(){
     // - /inspecoes sem liderParam (admin/super => geral, user => ele)
     // Para supervisor preenchido:
     // - /inspecoes?lider= (já filtra por participação no Worker)
-    const inspecoesMes = await fetchInspecoesRange(ini, fim, supervisor);
+    // ========= 3) Abrangência (inspeções reais do ANO + ranking-colaboradores)
 
-    // filtro regional no front
-    const inspecoesRegional = !regional ? inspecoesMes : inspecoesMes.filter(i => isInRegionalByLiderNome(i.lider, regional));
+// pega ano inteiro do ano do mês selecionado
+const iniAno = `${ano}-01-01`;
+const fimAno = `${ano}-12-31`;
 
-    // ranking-colaboradores hoje força user comum e admin geral.
-    // Para supervisor específico, não dá pelo endpoint atual (porque ele força user/permissão).
-    // Ainda assim, para admin/super e sem supervisor, funciona.
-    const ranking = await fetchRankingColaboradores();
+// inspeções do ano (não do mês)
+const inspecoesAno = await fetchInspecoesRange(iniAno, fimAno, supervisor);
 
-    const rankingFiltrado = (ranking || []).filter(r=>{
-      const liderR = String(r.lider||"").trim();
-      if (regional && !isInRegionalByLiderNome(liderR, regional)) return false;
-      if (supervisor && normName(liderR) !== normName(supervisor)) return false;
-      return true;
-    });
+// filtro regional no front
+const inspecoesAnoRegional = !regional
+  ? inspecoesAno
+  : inspecoesAno.filter(i => isInRegionalByLiderNome(i.lider, regional));
 
-    const ab = calcAbrangencia(inspecoesRegional, rankingFiltrado);
-    document.getElementById("kpiAbrangencia").textContent = `${ab.pct.toFixed(1).replace(".",",")}%`;
-    document.getElementById("kpiAbrangenciaSub").textContent = `${ab.inspecionados} inspecionados / ${ab.total} total`;
+// ranking do time (continua igual)
+const ranking = await fetchRankingColaboradores();
 
-    setStatus(`Dashboard atualizado • Mês ${mes}`, "success");
-  } catch(e){
-    console.error(e);
-    setStatus("Erro ao carregar dashboard (veja o console).", "error");
-  }
+const rankingFiltrado = (ranking || []).filter(r=>{
+  const liderR = String(r.lider||"").trim();
+  if (regional && !isInRegionalByLiderNome(liderR, regional)) return false;
+  if (supervisor && normName(liderR) !== normName(supervisor)) return false;
+  return true;
+});
+
+// abrangência anual
+const ab = calcAbrangencia(inspecoesAnoRegional, rankingFiltrado);
+
+document.getElementById("kpiAbrangencia").textContent =
+  `${ab.pct.toFixed(1).replace(".",",")}%`;
+
+const faltamColabs = Math.max(0, ab.total - ab.inspecionados);
+document.getElementById("kpiAbrangenciaSub").textContent =
+  `${ab.inspecionados} inspecionados / ${ab.total} total • Faltam: ${faltamColabs}`;
+
+// ---- Prazo fixo: começa 03/02/2026 e dura 4 meses ----
+const inicioPrazo = new Date("2026-02-03T00:00:00");
+const fimPrazo = addMonths(inicioPrazo, 4); // 4 meses depois
+
+const hoje = new Date();
+const diasTotais = Math.max(0, diffDays(inicioPrazo, fimPrazo));
+const diasRestantes = Math.max(0, diffDays(hoje, fimPrazo));
+
+const elPrazo = document.getElementById("kpiAbrangenciaPrazo");
+if (elPrazo) {
+  elPrazo.textContent =
+    `Prazo: ${diasRestantes} dia(s) restantes • até ${formatarDataBR(fimPrazo.toISOString().slice(0,10))} (total ${diasTotais} dias)`;
 }
 
 /* ============================
