@@ -695,6 +695,7 @@ async function carregarSupervisoresNoSelect(){
    DASHBOARD CORE
 ============================ */
 async function atualizarDashboard(){
+  async function atualizarDashboard(){
   try{
     setStatus("Carregando dados...", "");
 
@@ -706,41 +707,93 @@ async function atualizarDashboard(){
 
     // ========= 1) KPIs + gráfico do ano (OFICIAL: /stats-mensal)
     // Obs: se supervisor vazio => "geral" (admin/super vê geral; user normal o Worker força pra ele)
-    const stats = await fetchStatsMensal(ano, supervisor);
+    // ========= 1) KPIs + gráfico do ano (OFICIAL: /stats-mensal)
+// Pega SEM supervisor para não “igualar” por causa do backend
+// ========= 1) KPIs do mês (via inspeções reais)
 
-    const rowMes = (stats.por_mes || []).find(r => String(r.mes) === String(mm)) || { total: 0, soma_nao_conforme: 0 };
+// pega inspeções do mês JÁ FILTRADAS por participação do supervisor (lider/auditor/cadastrante)
+const inspecoesMesBase = await fetchInspecoesRange(ini, fim, supervisor || "");
 
-    // aplica filtro REGIONAL no front (porque /stats-mensal não tem regional)
-    // quando regional != "" e supervisor == "" => não dá pra filtrar corretamente sem endpoint.
-    if (regional && !supervisor){
-      setStatus("⚠️ Para filtrar por Regional sem escolher Supervisor, precisa de endpoint que agreg incluindo regional.", "error");
-    }
+// helper pra descobrir "quem é o líder" do registro (pra regional)
+function getNomeLiderInspecao(i){
+  return String(
+    i.lider ??
+    i.gestor_imediato ??
+    i.supervisor ??
+    i.gestor ??
+    ""
+  ).trim();
+}
 
-    document.getElementById("kpiInspecoes").textContent = Number(rowMes.total || 0);
-    document.getElementById("kpiNC").textContent = Number(rowMes.soma_nao_conforme || 0);
+// aplica regional (se selecionado)
+const inspecoesMesFiltradas = !regional
+  ? inspecoesMesBase
+  : inspecoesMesBase.filter(i => isInRegionalByLiderNome(getNomeLiderInspecao(i), regional));
 
-    document.getElementById("kpiInspecoesSub").textContent =
-      supervisor ? `Supervisor: ${supervisor}` :
-      (regional ? `Regional: ${regional} (parcial*)` : "Geral");
+// total inspeções do mês
+const totalInspecoesMes = inspecoesMesFiltradas.length;
 
-    document.getElementById("kpiNCSub").textContent =
-      `Escopo do mês ${mes} • (via /stats-mensal)`;
+// soma NC do mês (tentando vários campos)
+function getNC(i){
+  const cand = [
+    i.qtd_nc,
+    i.qtd_nao_conformidade,
+    i.nao_conformidades,
+    i.nao_conforme,
+    i.nc,
+    i.total_nc
+  ];
+  for (const v of cand){
+    const n = Number(v);
+    if (Number.isFinite(n)) return n;
+  }
+  if (Array.isArray(i.nao_conformidade_itens)) return i.nao_conformidade_itens.length;
+  return 0;
+}
+const totalNCMes = inspecoesMesFiltradas.reduce((acc, i) => acc + getNC(i), 0);
 
-    // gráfico do ano
-    const labelsAno = ["01","02","03","04","05","06","07","08","09","10","11","12"].map(nomeMes);
+// aplica nos KPIs
+document.getElementById("kpiInspecoes").textContent = totalInspecoesMes;
+document.getElementById("kpiNC").textContent = totalNCMes;
 
-    // garante 12 posições (caso venha faltando)
-    const porMesMap = new Map();
-    (stats.por_mes || []).forEach(r => porMesMap.set(String(r.mes).padStart(2,"0"), r));
+document.getElementById("kpiInspecoesSub").textContent =
+  supervisor ? `Supervisor: ${supervisor}` :
+  (regional ? `Regional: ${regional} (parcial*)` : "Geral");
 
-    const insAno = [];
-    const ncAno  = [];
-    for (const m of ["01","02","03","04","05","06","07","08","09","10","11","12"]){
-      const r = porMesMap.get(m) || {};
-      insAno.push(Number(r.total || 0));
-      ncAno.push(Number(r.soma_nao_conforme || 0));
-    }
-    drawBars(document.getElementById("cvAno"), labelsAno, insAno, ncAno, "Inspeções", "NC");
+document.getElementById("kpiNCSub").textContent =
+  `Escopo do mês ${mes} • (via inspeções reais)`;
+
+    try {
+  const statsAno = await fetchStatsMensal(ano, ""); // geral
+
+  const labelsAno = ["01","02","03","04","05","06","07","08","09","10","11","12"].map(nomeMes);
+
+  // garante 12 posições mesmo se vier faltando mês
+  const porMesMap = new Map();
+  (statsAno.por_mes || []).forEach(r => {
+    const k = String(r.mes || "").padStart(2, "0");
+    porMesMap.set(k, r);
+  });
+
+  const insAno = [];
+  const ncAno  = [];
+
+  for (const m2 of ["01","02","03","04","05","06","07","08","09","10","11","12"]) {
+    const r2 = porMesMap.get(m2) || {};
+    insAno.push(Number(r2.total || 0));
+    ncAno.push(Number(r2.soma_nao_conforme || 0));
+  }
+
+  const cvAno = document.getElementById("cvAno");
+  if (cvAno) {
+    drawBars(cvAno, labelsAno, insAno, ncAno, "Inspeções", "NC");
+  } else {
+    console.warn("Canvas cvAno não encontrado");
+  }
+} catch (e) {
+  console.error("Erro ao desenhar gráfico do ano:", e);
+}
+
 
     // ========= 2) Frequência semanal (OFICIAL: /frequencia)
     // /frequencia exige gestor. Se "Todos", não dá (precisa endpoint agregador).
