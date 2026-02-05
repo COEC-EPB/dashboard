@@ -762,6 +762,22 @@ document.getElementById("kpiInspecoesSub").textContent =
 document.getElementById("kpiNCSub").textContent =
   `Escopo do mês ${mes} • (via inspeções reais)`;
 
+    // --- GRÁFICO DO ANO continua usando stats (geral) ---
+const labelsAno = ["01","02","03","04","05","06","07","08","09","10","11","12"].map(nomeMes);
+
+// garante 12 posições
+const porMesMap = new Map();
+(stats.por_mes || []).forEach(r => porMesMap.set(String(r.mes).padStart(2,"0"), r));
+
+const insAno = [];
+const ncAno  = [];
+for (const m2 of ["01","02","03","04","05","06","07","08","09","10","11","12"]){
+  const r2 = porMesMap.get(m2) || {};
+  insAno.push(Number(r2.total || 0));
+  ncAno.push(Number(r2.soma_nao_conforme || 0));
+}
+drawBars(document.getElementById("cvAno"), labelsAno, insAno, ncAno, "Inspeções", "NC");
+
 
     // ========= 2) Frequência semanal (OFICIAL: /frequencia)
     // /frequencia exige gestor. Se "Todos", não dá (precisa endpoint agregador).
