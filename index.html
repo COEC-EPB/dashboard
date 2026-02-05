@@ -704,94 +704,46 @@ async function atualizarDashboard(){
 
     const { ini, fim, ano, mm } = mesToRange(mes);
 
-    /* ============================================================
-       1) KPIs DO MÊS (via inspeções reais /inspecoes)
-       - usa fetchInspecoesRange(ini,fim,supervisor)
-       - seu worker já filtra por participação do supervisor quando "lider" é passado
-    ============================================================ */
+    // ========= 1) KPIs + gráfico do ano (OFICIAL: /stats-mensal)
+    // Obs: se supervisor vazio => "geral" (admin/super vê geral; user normal o Worker força pra ele)
+    const stats = await fetchStatsMensal(ano, supervisor);
 
-    const inspecoesMesBase = await fetchInspecoesRange(ini, fim, supervisor || "");
+    const rowMes = (stats.por_mes || []).find(r => String(r.mes) === String(mm)) || { total: 0, soma_nao_conforme: 0 };
 
-    function getNomeLiderInspecao(i){
-      return String(
-        i.lider ??
-        i.gestor_imediato ??
-        i.supervisor ??
-        i.gestor ??
-        ""
-      ).trim();
+    // aplica filtro REGIONAL no front (porque /stats-mensal não tem regional)
+    // quando regional != "" e supervisor == "" => não dá pra filtrar corretamente sem endpoint.
+    if (regional && !supervisor){
+      setStatus("⚠️ Para filtrar por Regional sem escolher Supervisor, precisa de endpoint que agreg incluindo regional.", "error");
     }
 
-    // aplica regional (se selecionado) usando o líder do registro
-    const inspecoesMesFiltradas = !regional
-      ? inspecoesMesBase
-      : inspecoesMesBase.filter(i => isInRegionalByLiderNome(getNomeLiderInspecao(i), regional));
-
-    const totalInspecoesMes = inspecoesMesFiltradas.length;
-
-    function getNC(i){
-      const cand = [
-        i.qtd_nc,
-        i.qtd_nao_conformidade,
-        i.nao_conformidades,
-        i.nao_conforme,
-        i.nc,
-        i.total_nc
-      ];
-      for (const v of cand){
-        const n = Number(v);
-        if (Number.isFinite(n)) return n;
-      }
-      if (Array.isArray(i.nao_conformidade_itens)) return i.nao_conformidade_itens.length;
-      return 0;
-    }
-    const totalNCMes = inspecoesMesFiltradas.reduce((acc, i) => acc + getNC(i), 0);
-
-    document.getElementById("kpiInspecoes").textContent = totalInspecoesMes;
-    document.getElementById("kpiNC").textContent = totalNCMes;
+    document.getElementById("kpiInspecoes").textContent = Number(rowMes.total || 0);
+    document.getElementById("kpiNC").textContent = Number(rowMes.soma_nao_conforme || 0);
 
     document.getElementById("kpiInspecoesSub").textContent =
       supervisor ? `Supervisor: ${supervisor}` :
       (regional ? `Regional: ${regional} (parcial*)` : "Geral");
 
     document.getElementById("kpiNCSub").textContent =
-      `Escopo do mês ${mes} • (via inspeções reais)`;
+      `Escopo do mês ${mes} • (via /stats-mensal)`;
 
+    // gráfico do ano
+    const labelsAno = ["01","02","03","04","05","06","07","08","09","10","11","12"].map(nomeMes);
 
-    /* ============================================================
-       2) GRÁFICO DO ANO (Inspeções x NC por mês)
-       - usa /stats-mensal (geral) e desenha no cvAno
-    ============================================================ */
-    try{
-      const statsAno = await fetchStatsMensal(ano, ""); // geral
+    // garante 12 posições (caso venha faltando)
+    const porMesMap = new Map();
+    (stats.por_mes || []).forEach(r => porMesMap.set(String(r.mes).padStart(2,"0"), r));
 
-      const labelsAno = ["01","02","03","04","05","06","07","08","09","10","11","12"].map(nomeMes);
-
-      const porMesMap = new Map();
-      (statsAno.por_mes || []).forEach(r => {
-        const k = String(r.mes || "").padStart(2, "0");
-        porMesMap.set(k, r);
-      });
-
-      const insAno = [];
-      const ncAno  = [];
-      for (const m2 of ["01","02","03","04","05","06","07","08","09","10","11","12"]){
-        const r2 = porMesMap.get(m2) || {};
-        insAno.push(Number(r2.total || 0));
-        ncAno.push(Number(r2.soma_nao_conforme || 0));
-      }
-
-      const cvAno = document.getElementById("cvAno");
-      if (cvAno) drawBars(cvAno, labelsAno, insAno, ncAno, "Inspeções", "NC");
-    }catch(e){
-      console.error("Erro ao desenhar gráfico do ano:", e);
-      // não quebra o dashboard por causa do gráfico
+    const insAno = [];
+    const ncAno  = [];
+    for (const m of ["01","02","03","04","05","06","07","08","09","10","11","12"]){
+      const r = porMesMap.get(m) || {};
+      insAno.push(Number(r.total || 0));
+      ncAno.push(Number(r.soma_nao_conforme || 0));
     }
+    drawBars(document.getElementById("cvAno"), labelsAno, insAno, ncAno, "Inspeções", "NC");
 
-
-    /* ============================================================
-       3) FREQUÊNCIA SEMANAL (mês) via /frequencia
-    ============================================================ */
+    // ========= 2) Frequência semanal (OFICIAL: /frequencia)
+    // /frequencia exige gestor. Se "Todos", não dá (precisa endpoint agregador).
     if (supervisor){
       const freq = await fetchFrequencia(mes, supervisor);
       const weeks = Array.isArray(freq.weeks) ? freq.weeks : [0,0,0,0,0];
@@ -800,49 +752,43 @@ async function atualizarDashboard(){
       drawWeeks(document.getElementById("cvFrequencia"), [0,0,0,0,0]);
     }
 
+    // ========= 3) Abrangência (ANUAL)
+    // pega ano inteiro do ano do mês selecionado
+    const iniAno = `${ano}-01-01`;
+    const fimAno = `${ano}-12-31`;
 
-    /* ============================================================
-       4) ABRANGÊNCIA (ANUAL) - "inspecionados pelo gestor"
-       - NÃO usa lista de auditados da inspeção.
-       - Usa a tabela/coluna do D1 via endpoint /ranking-colaboradores:
-           * insp_gestor > 0  => foi inspecionado pelo gestor
-           * "único" => conta pessoas, não quantidade de inspeções
-       - total = tamanho da equipe do supervisor (ou geral)
-    ============================================================ */
+    // inspeções do ano (não do mês)
+    const inspecoesAno = await fetchInspecoesRange(iniAno, fimAno, supervisor);
 
-    const ranking = await fetchRankingColaboradores(); // deve vir com {colaborador, lider, insp_gestor, ...}
+    // filtro regional no front
+    const inspecoesAnoRegional = !regional
+      ? inspecoesAno
+      : inspecoesAno.filter(i => isInRegionalByLiderNome(i.lider, regional));
+
+    // ranking do time (continua igual)
+    const ranking = await fetchRankingColaboradores();
 
     const rankingFiltrado = (ranking || []).filter(r=>{
-      const liderR = String(r.lider || r.gestor_imediato || "").trim();
-
-      // filtro supervisor (equipe do supervisor)
-      if (supervisor && normName(liderR) !== normName(supervisor)) return false;
-
-      // filtro regional (pela chave do gestor_imediato / lider da equipe)
+      const liderR = String(r.lider||"").trim();
       if (regional && !isInRegionalByLiderNome(liderR, regional)) return false;
-
+      if (supervisor && normName(liderR) !== normName(supervisor)) return false;
       return true;
     });
 
-    // total equipe
-    const totalEquipe = rankingFiltrado.length;
+    // abrangência anual
+    const ab = calcAbrangencia(inspecoesAnoRegional, rankingFiltrado);
 
-    // "inspecionados pelo gestor" => insp_gestor > 0 (único por pessoa)
-    const inspecionadosEquipe = rankingFiltrado.filter(r => Number(r.insp_gestor || 0) > 0).length;
+    document.getElementById("kpiAbrangencia").textContent =
+      `${ab.pct.toFixed(1).replace(".",",")}%`;
 
-    const pct = totalEquipe > 0 ? (inspecionadosEquipe / totalEquipe) * 100 : 0;
-    const faltamColabs = Math.max(0, totalEquipe - inspecionadosEquipe);
+    const faltamColabs = Math.max(0, ab.total - ab.inspecionados);
 
-    document.getElementById("kpiAbrangencia").textContent = `${pct.toFixed(1).replace(".",",")}%`;
     document.getElementById("kpiAbrangenciaSub").textContent =
-      `${inspecionadosEquipe} inspecionados / ${totalEquipe} total • Faltam: ${faltamColabs}`;
+      `${ab.inspecionados} inspecionados / ${ab.total} total • Faltam: ${faltamColabs}`;
 
-
-    /* ============================================================
-       5) PRAZO FIXO: começa 03/02/2026 e dura 4 meses (mostra dias)
-    ============================================================ */
+    // ---- Prazo fixo: começa 03/02/2026 e dura 4 meses ----
     const inicioPrazo = new Date("2026-02-03T00:00:00");
-    const fimPrazo = addMonths(inicioPrazo, 4);
+    const fimPrazo = addMonths(inicioPrazo, 4); // 4 meses depois
 
     const hoje = new Date();
     const diasTotais = Math.max(0, diffDays(inicioPrazo, fimPrazo));
@@ -860,7 +806,6 @@ async function atualizarDashboard(){
     setStatus("Erro ao carregar dashboard (veja o console).", "error");
   }
 }
-
 
 /* ============================
    INIT
