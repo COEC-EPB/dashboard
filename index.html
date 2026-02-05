@@ -761,22 +761,38 @@ document.getElementById("kpiInspecoesSub").textContent =
 
 document.getElementById("kpiNCSub").textContent =
   `Escopo do mês ${mes} • (via inspeções reais)`;
+// ========= GRÁFICO DO ANO (Inspeções x NC por mês)
+// usa /stats-mensal (geral) e DESENHA no cvAno
+try {
+  const statsAno = await fetchStatsMensal(ano, ""); // geral
 
-    // --- GRÁFICO DO ANO continua usando stats (geral) ---
-const labelsAno = ["01","02","03","04","05","06","07","08","09","10","11","12"].map(nomeMes);
+  const labelsAno = ["01","02","03","04","05","06","07","08","09","10","11","12"].map(nomeMes);
 
-// garante 12 posições
-const porMesMap = new Map();
-(stats.por_mes || []).forEach(r => porMesMap.set(String(r.mes).padStart(2,"0"), r));
+  // garante 12 posições mesmo se vier faltando mês
+  const porMesMap = new Map();
+  (statsAno.por_mes || []).forEach(r => {
+    const k = String(r.mes || "").padStart(2, "0");
+    porMesMap.set(k, r);
+  });
 
-const insAno = [];
-const ncAno  = [];
-for (const m2 of ["01","02","03","04","05","06","07","08","09","10","11","12"]){
-  const r2 = porMesMap.get(m2) || {};
-  insAno.push(Number(r2.total || 0));
-  ncAno.push(Number(r2.soma_nao_conforme || 0));
+  const insAno = [];
+  const ncAno  = [];
+
+  for (const m2 of ["01","02","03","04","05","06","07","08","09","10","11","12"]) {
+    const r2 = porMesMap.get(m2) || {};
+    insAno.push(Number(r2.total || 0));
+    ncAno.push(Number(r2.soma_nao_conforme || 0));
+  }
+
+  const cvAno = document.getElementById("cvAno");
+  if (cvAno) {
+    drawBars(cvAno, labelsAno, insAno, ncAno, "Inspeções", "NC");
+  } else {
+    console.warn("Canvas cvAno não encontrado");
+  }
+} catch (e) {
+  console.error("Erro ao desenhar gráfico do ano:", e);
 }
-drawBars(document.getElementById("cvAno"), labelsAno, insAno, ncAno, "Inspeções", "NC");
 
 
     // ========= 2) Frequência semanal (OFICIAL: /frequencia)
