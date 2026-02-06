@@ -255,7 +255,21 @@ function diffDays(a, b){
   const ms = b.getTime() - a.getTime();
   return Math.ceil(ms / (1000 * 60 * 60 * 24));
 }
+function weeksInMonth(yyyyMM){
+  const [y, m] = String(yyyyMM || "").split("-");
+  if (!y || !m) return 5;
 
+  const year = Number(y);
+  const month = Number(m); // 1..12
+  const lastDay = new Date(year, month, 0).getDate(); // último dia do mês
+  return Math.ceil(lastDay / 7); // 28->4, 29..31->5
+}
+
+function weekOfMonthFromISO(iso){
+  const dt = new Date(`${iso}T00:00:00`);
+  if (isNaN(dt.getTime())) return null;
+  return Math.floor((dt.getDate() - 1) / 7) + 1; // 1..5
+}
 function logout(){
   localStorage.removeItem("logado");
   localStorage.removeItem("token");
@@ -658,9 +672,15 @@ function drawBars(canvas, labels, valuesA, valuesB, labelA="A", labelB="B"){
   attachCanvasTooltip(canvas);
 }
 
-function drawWeeks(canvas, weeks){
-  const labels = ["Semana 1","Semana 2","Semana 3","Semana 4","Ssemana 5"];
-  drawBars(canvas, labels, weeks, [0,0,0,0,0], "Inspeções", "");
+function drawWeeks(canvas, weeks, mesYYYYMM){
+  const n = weeksInMonth(mesYYYYMM); // 4 ou 5
+  const labels = Array.from({length: n}, (_, i) => `S${i+1}`);
+
+  // garante o tamanho certo
+  const vals = Array.isArray(weeks) ? weeks.slice(0, n) : [];
+  while (vals.length < n) vals.push(0);
+
+  drawBars(canvas, labels, vals, [], "Inspeções", ""); // labelB vazio = não desenha B
 }
 
 function nomeMes(mm){
