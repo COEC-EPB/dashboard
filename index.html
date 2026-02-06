@@ -762,12 +762,12 @@ document.getElementById("kpiInspecoesSub").textContent =
 document.getElementById("kpiNCSub").textContent =
   `Escopo do mês ${mes} •`;
 
-    try {
-  const statsAno = await fetchStatsMensal(ano, ""); // geral
+    try{
+  // agora filtra pelo supervisor quando selecionado
+  const statsAno = await fetchStatsMensal(ano, supervisor || "");
 
   const labelsAno = ["01","02","03","04","05","06","07","08","09","10","11","12"].map(nomeMes);
 
-  // garante 12 posições mesmo se vier faltando mês
   const porMesMap = new Map();
   (statsAno.por_mes || []).forEach(r => {
     const k = String(r.mes || "").padStart(2, "0");
@@ -784,11 +784,7 @@ document.getElementById("kpiNCSub").textContent =
   }
 
   const cvAno = document.getElementById("cvAno");
-  if (cvAno) {
-    drawBars(cvAno, labelsAno, insAno, ncAno, "Inspeções", "NC");
-  } else {
-    console.warn("Canvas cvAno não encontrado");
-  }
+  if (cvAno) drawBars(cvAno, labelsAno, insAno, ncAno, "Inspeções", "NC");
 } catch (e) {
   console.error("Erro ao desenhar gráfico do ano:", e);
 }
