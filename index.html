@@ -351,9 +351,23 @@ const REGIONAL_POR_LIDER = {
   "YURI VILMAR BATISTA MELO": "LESTE",
   "MARCONE HENRIQUE DA CRUZ": "OESTE",
   "RENATO LINS DE VASCONCELOS NETO": "LESTE",
+  "ANTONIO PEREIRA GOMES":"CENTRO",
   "FABRICIO ANDRE SILVA DE ARAUJO": "LESTE",
   "GERALDO PEDRO DA SILVA JUNIOR": "LESTE",
-  "RICHARDSON SILVA DE OLIVEIRA": "LESTE"
+  "RICHARDSON SILVA DE OLIVEIRA": "LESTE",
+  "FRANCISCO DE ASSIS PEREIRA JUNIOR": "OESTE",
+   "FERNANDO ALVES PESSOA": "OESTE",
+   "FRANCISCO BATISTA DE LIMA": "OESTE",
+   "GIESY LAMOUNIER DE OLIVEIRA MACIEL": "OESTE",
+   "JORGE LUIS MARQUES DOS SANTOS": "OESTE",
+  "ANDERSON BARROS VELEZ": "CENTRO",
+  "ANGELO FLAVIO DA SILVA": "CENTRO",
+  "HAROLDO QUARESMA GOMES": "CENTRO",
+  "YAGO ALBINO CRUZ": "CENTRO",
+  "JOSE LUIS ALVES DE LIMA": "CENTRO",
+  "ADRIANO PAULO DA SILVA": "CENTRO",
+  "IRIALLESON DA SILVA LIMA": "CENTRO",
+  "JOSE MARIO DE ALEXANDRE SARAIVA": "CENTRO"
 };
 
 function isInRegionalByLiderNome(liderNome, regional){
@@ -792,13 +806,51 @@ document.getElementById("kpiNCSub").textContent =
 
     // ========= 2) Frequência semanal (OFICIAL: /frequencia)
     // /frequencia exige gestor. Se "Todos", não dá (precisa endpoint agregador).
-    if (supervisor){
-      const freq = await fetchFrequencia(mes, supervisor);
-      const weeks = Array.isArray(freq.weeks) ? freq.weeks : [0,0,0,0,0];
-      drawWeeks(document.getElementById("cvFrequencia"), weeks);
-    } else {
-      drawWeeks(document.getElementById("cvFrequencia"), [0,0,0,0,0]);
-    }
+    function getISODateFromInspecao(i){
+  // tenta vários campos comuns
+  const raw =
+    i.data_iso ??
+    i.data_inspecao ??
+    i.data ??
+    i.data_registro ??
+    "";
+  const s = String(raw || "").trim();
+  if (!s) return null;
+
+  // pega yyyy-mm-dd (ou tenta dd/mm/yyyy)
+  if (s.includes("/")) {
+    const [d,m,y] = s.split("/");
+    if (y && m && d) return `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+  }
+  return s.slice(0,10);
+}
+
+function weekOfMonthFromISO(iso){
+  const dt = new Date(`${iso}T00:00:00`);
+  if (isNaN(dt.getTime())) return null;
+  return Math.floor((dt.getDate() - 1) / 7) + 1; // 1..5
+}
+
+if (supervisor) {
+  // mantém como está: por supervisor via endpoint
+  const freq = await fetchFrequencia(mes, supervisor);
+  const weeks = Array.isArray(freq.weeks) ? freq.weeks : [0,0,0,0,0];
+  drawWeeks(document.getElementById("cvFrequencia"), weeks);
+} else {
+  // GERAL: calcula no front
+  const insps = await fetchInspecoesRange(ini, fim, ""); // geral do mês
+  const weeks = [0,0,0,0,0];
+
+  for (const i of (insps || [])) {
+    const iso = getISODateFromInspecao(i);
+    if (!iso) continue;
+    const w = weekOfMonthFromISO(iso);
+    if (!w || w < 1 || w > 5) continue;
+    weeks[w-1] += 1;
+  }
+
+  drawWeeks(document.getElementById("cvFrequencia"), weeks);
+}
 
     // ========= 3) Abrangência (ANUAL)
     // pega ano inteiro do ano do mês selecionado
