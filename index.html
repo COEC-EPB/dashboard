@@ -166,7 +166,7 @@
 
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <span class="pill"><i class="bi bi-info-circle"></i> (Inspeções e NC)</span>
-        <span class="pill"><i class="bi bi-people"></i> Abrangência usa inspeções reais + ranking-colaboradores</span>
+        <span class="pill"><i class="bi bi-people"></i> Abrangência </span>
         <span class="pill"><i class="bi bi-graph-up"></i> Frequência semanal</span>
       </div>
     </div>
@@ -214,7 +214,7 @@
       <div class="card pad" style="grid-column: span 6;">
         <div class="chart-title">
           <h3><i class="bi bi-bar-chart"></i> Inspeções x NC por mês (ano)</h3>
-          <div class="hint">Dados do <b>/stats-mensal</b> no ano do mês selecionado</div>
+          <div class="hint">Acumulado do ano</div>
         </div>
         <div style="margin-top:10px;">
           <canvas id="cvAno"></canvas>
@@ -760,7 +760,7 @@ document.getElementById("kpiInspecoesSub").textContent =
   (regional ? `Regional: ${regional} (parcial*)` : "Geral");
 
 document.getElementById("kpiNCSub").textContent =
-  `Escopo do mês ${mes} • (via inspeções reais)`;
+  `Escopo do mês ${mes} •`;
 
     try {
   const statsAno = await fetchStatsMensal(ano, ""); // geral
