@@ -91,7 +91,6 @@
     .chart-title h3{margin:0;color:var(--primary);font-size:16px;}
     .hint{font-size:12px;color:#777;}
 
-    /* tooltip */
     .canvas-tip{
       position: fixed;
       display: none;
@@ -134,12 +133,16 @@
   </header>
 
   <main>
-    <!-- filtros -->
     <div class="card pad">
       <div class="row">
         <div>
-          <div class="hint" style="font-weight:700;margin-bottom:6px;">Mês</div>
-          <input id="filtroMes" type="month" style="width:180px;">
+          <div class="hint" style="font-weight:700;margin-bottom:6px;">Mês inicial</div>
+          <input id="filtroMesIni" type="month" style="width:180px;">
+        </div>
+
+        <div>
+          <div class="hint" style="font-weight:700;margin-bottom:6px;">Mês final</div>
+          <input id="filtroMesFim" type="month" style="width:180px;">
         </div>
 
         <div>
@@ -166,16 +169,15 @@
 
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <span class="pill"><i class="bi bi-info-circle"></i> (Inspeções e NC)</span>
-        <span class="pill"><i class="bi bi-people"></i> Abrangência </span>
-        <span class="pill"><i class="bi bi-graph-up"></i> Frequência semanal</span>
+        <span class="pill"><i class="bi bi-people"></i> Abrangência</span>
+        <span class="pill"><i class="bi bi-graph-up"></i> Frequência semanal / período</span>
       </div>
     </div>
 
-    <!-- KPIs -->
     <div class="grid" style="margin-top:12px;">
       <div class="card pad" style="grid-column: span 4;">
         <div class="kpi">
-          <div class="label">Qtd. Inspeções (mês)</div>
+          <div class="label">Qtd. Inspeções (período)</div>
           <div class="value" id="kpiInspecoes">0</div>
           <div class="sub" id="kpiInspecoesSub">—</div>
         </div>
@@ -183,28 +185,27 @@
 
       <div class="card pad" style="grid-column: span 4;">
         <div class="kpi">
-          <div class="label">Qtd. Não Conformidades (mês)</div>
+          <div class="label">Qtd. Não Conformidades (período)</div>
           <div class="value" id="kpiNC">0</div>
           <div class="sub" id="kpiNCSub">—</div>
         </div>
       </div>
 
       <div class="card pad" style="grid-column: span 4;">
-       <div class="kpi">
-    <div class="label">Abrangência</div>
-    <div class="value" id="kpiAbrangencia">0%</div>
-    <div class="sub" id="kpiAbrangenciaSub">0 inspecionados / 0 total</div>
-    <div class="sub" id="kpiAbrangenciaPrazo">—</div>
-  </div>
-</div>
+        <div class="kpi">
+          <div class="label">Abrangência</div>
+          <div class="value" id="kpiAbrangencia">0%</div>
+          <div class="sub" id="kpiAbrangenciaSub">0 inspecionados / 0 total</div>
+          <div class="sub" id="kpiAbrangenciaPrazo">—</div>
+        </div>
+      </div>
     </div>
 
-    <!-- Gráficos -->
     <div class="grid" style="margin-top:12px;">
       <div class="card pad" style="grid-column: span 6;">
         <div class="chart-title">
-          <h3><i class="bi bi-graph-up"></i> Frequência semanal (mês)</h3>
-          <div class="hint">Inspeções mensal</div>
+          <h3 id="tituloGraficoEsquerda"><i class="bi bi-graph-up"></i> Frequência semanal (mês)</h3>
+          <div class="hint" id="hintGraficoEsquerda">Inspeções mensal</div>
         </div>
         <div style="margin-top:10px;">
           <canvas id="cvFrequencia"></canvas>
@@ -213,8 +214,8 @@
 
       <div class="card pad" style="grid-column: span 6;">
         <div class="chart-title">
-          <h3><i class="bi bi-bar-chart"></i> Inspeções x NC por mês (ano)</h3>
-          <div class="hint">Acumulado do ano</div>
+          <h3 id="tituloGraficoDireita"><i class="bi bi-bar-chart"></i> Inspeções x NC por mês (período)</h3>
+          <div class="hint" id="hintGraficoDireita">Acumulado do período</div>
         </div>
         <div style="margin-top:10px;">
           <canvas id="cvAno"></canvas>
@@ -223,17 +224,12 @@
     </div>
   </main>
 
-  <!-- tooltip -->
   <div id="canvasTooltip" class="canvas-tip"></div>
 
 <script>
-/* ============================
-   CONFIG / SESSÃO
-============================ */
 const API = "https://inspecoes.pedro-fillype.workers.dev";
 
-  function formatarDataBR(iso){
-  // iso yyyy-mm-dd
+function formatarDataBR(iso){
   const s = String(iso || "").trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return s || "-";
   const [y,m,d] = s.split("-");
@@ -244,32 +240,30 @@ function addMonths(dateObj, months){
   const d = new Date(dateObj.getTime());
   const day = d.getDate();
   d.setMonth(d.getMonth() + Number(months || 0));
-
-  // ajuste para meses menores (ex: 31 -> 30/28)
   if (d.getDate() < day) d.setDate(0);
   return d;
 }
 
 function diffDays(a, b){
-  // diferença em dias inteiros entre datas (b - a)
   const ms = b.getTime() - a.getTime();
   return Math.ceil(ms / (1000 * 60 * 60 * 24));
 }
+
 function weeksInMonth(yyyyMM){
   const [y, m] = String(yyyyMM || "").split("-");
   if (!y || !m) return 5;
-
   const year = Number(y);
-  const month = Number(m); // 1..12
-  const lastDay = new Date(year, month, 0).getDate(); // último dia do mês
-  return Math.ceil(lastDay / 7); // 28->4, 29..31->5
+  const month = Number(m);
+  const lastDay = new Date(year, month, 0).getDate();
+  return Math.ceil(lastDay / 7);
 }
 
 function weekOfMonthFromISO(iso){
   const dt = new Date(`${iso}T00:00:00`);
   if (isNaN(dt.getTime())) return null;
-  return Math.floor((dt.getDate() - 1) / 7) + 1; // 1..5
+  return Math.floor((dt.getDate() - 1) / 7) + 1;
 }
+
 function logout(){
   localStorage.removeItem("logado");
   localStorage.removeItem("token");
@@ -299,9 +293,6 @@ async function apiFetch(path, options={}){
   });
 }
 
-/* ============================
-   TOKEN HELPERS (compat)
-============================ */
 function b64urlToString(b64url) {
   try {
     let b64 = String(b64url || "").replace(/-/g, "+").replace(/_/g, "/");
@@ -343,9 +334,6 @@ function normName(s){
     .replace(/\s+/g," ").trim().toUpperCase();
 }
 
-/* ============================
-   MAPA LÍDER -> REGIONAL
-============================ */
 const REGIONAL_POR_LIDER = {
   "ANDERSON DE ARAUJO VASCONCELOS": "CENTRO",
   "EDEVALDO FELICIANO DA SILVA": "CENTRO",
@@ -377,10 +365,10 @@ const REGIONAL_POR_LIDER = {
   "ADNILSON PIMENTAL DE SOUZA": "LESTE",
   "ALMIR BITTENCOURT NETO": "LESTE",
   "FRANCISCO DE ASSIS PEREIRA JUNIOR": "OESTE",
-   "FERNANDO ALVES PESSOA": "OESTE",
-   "FRANCISCO BATISTA DE LIMA": "OESTE",
-   "GIESY LAMOUNIER DE OLIVEIRA MACIEL": "OESTE",
-   "JORGE LUIS MARQUES DOS SANTOS": "OESTE",
+  "FERNANDO ALVES PESSOA": "OESTE",
+  "FRANCISCO BATISTA DE LIMA": "OESTE",
+  "GIESY LAMOUNIER DE OLIVEIRA MACIEL": "OESTE",
+  "JORGE LUIS MARQUES DOS SANTOS": "OESTE",
   "ANDERSON BARROS VELEZ": "CENTRO",
   "ANGELO FLAVIO DA SILVA": "CENTRO",
   "HAROLDO QUARESMA GOMES": "CENTRO",
@@ -397,28 +385,70 @@ function isInRegionalByLiderNome(liderNome, regional){
   return reg === regional;
 }
 
-/* ============================
-   DATAS
-============================ */
 function mesAtualYYYYMM(){
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
 }
 
-function mesToRange(mesYYYYMM){
-  const [y, m] = String(mesYYYYMM || "").split("-");
-  if (!y || !m) return { ini:"", fim:"", ano:"", mm:"" };
+function compareYYYYMM(a, b){
+  return String(a).localeCompare(String(b));
+}
 
-  const year = Number(y);
-  const month = Number(m); // 1..12
-  const lastDay = new Date(year, month, 0).getDate();
+function ordenarMeses(mesIni, mesFim){
+  if (!mesIni && !mesFim) {
+    const atual = mesAtualYYYYMM();
+    return { mesIni: atual, mesFim: atual };
+  }
+  if (!mesIni) mesIni = mesFim;
+  if (!mesFim) mesFim = mesIni;
+
+  if (compareYYYYMM(mesIni, mesFim) > 0) {
+    return { mesIni: mesFim, mesFim: mesIni };
+  }
+  return { mesIni, mesFim };
+}
+
+function monthRangeToDates(mesIni, mesFim){
+  const [y1, m1] = String(mesIni || "").split("-");
+  const [y2, m2] = String(mesFim || "").split("-");
+  if (!y1 || !m1 || !y2 || !m2) {
+    return { ini:"", fim:"" };
+  }
+
+  const lastDay = new Date(Number(y2), Number(m2), 0).getDate();
 
   return {
-    ini: `${y}-${m}-01`,
-    fim: `${y}-${m}-${String(lastDay).padStart(2, "0")}`,
-    ano: y,
-    mm: m
+    ini: `${y1}-${m1}-01`,
+    fim: `${y2}-${m2}-${String(lastDay).padStart(2, "0")}`
   };
+}
+
+function getMonthsBetween(mesIni, mesFim){
+  const out = [];
+  const { mesIni: mi, mesFim: mf } = ordenarMeses(mesIni, mesFim);
+
+  let [y, m] = mi.split("-").map(Number);
+  const [yf, mfNum] = mf.split("-").map(Number);
+
+  while (y < yf || (y === yf && m <= mfNum)){
+    out.push(`${y}-${String(m).padStart(2,"0")}`);
+    m++;
+    if (m > 12){
+      m = 1;
+      y++;
+    }
+  }
+  return out;
+}
+
+function nomeMes(mm){
+  const map = {"01":"Jan","02":"Fev","03":"Mar","04":"Abr","05":"Mai","06":"Jun","07":"Jul","08":"Ago","09":"Set","10":"Out","11":"Nov","12":"Dez"};
+  return map[mm] || mm;
+}
+
+function labelMes(yyyyMM){
+  const [y, m] = String(yyyyMM || "").split("-");
+  return `${nomeMes(m)}/${String(y).slice(-2)}`;
 }
 
 function parseISODateFlex(v){
@@ -429,32 +459,6 @@ function parseISODateFlex(v){
   return isNaN(dt.getTime()) ? null : dt;
 }
 
-function weekOfMonth(d){
-  return Math.floor((d.getDate()-1)/7)+1; // 1..5
-}
-
-/* ============================
-   FETCHERS
-============================ */
-async function fetchLideres(){
-  const res = await apiFetch(`/lideres`);
-  const text = await res.text();
-  if (!res.ok) throw new Error(text);
-  const data = JSON.parse(text);
-  return Array.isArray(data) ? data : (data.results || []);
-}
-
-async function fetchStatsMensal(ano, lider){
-  const qs = new URLSearchParams();
-  if (ano) qs.set("ano", ano);
-  if (lider) qs.set("lider", lider);
-
-  const res = await apiFetch(`/stats-mensal?${qs.toString()}`);
-  const text = await res.text();
-  if (!res.ok) throw new Error(text);
-  return JSON.parse(text);
-}
-
 async function fetchFrequencia(mes, gestor){
   const qs = new URLSearchParams();
   qs.set("mes", mes);
@@ -463,14 +467,14 @@ async function fetchFrequencia(mes, gestor){
   const res = await apiFetch(`/frequencia?${qs.toString()}`);
   const text = await res.text();
   if (!res.ok) throw new Error(text);
-  return JSON.parse(text); // {weeks,total}
+  return JSON.parse(text);
 }
 
 async function fetchInspecoesRange(ini, fim, lider){
   const qs = new URLSearchParams();
   if (ini) qs.set("data_ini", ini);
   if (fim) qs.set("data_fim", fim);
-  if (lider) qs.set("lider", lider); // importante: seu /inspecoes filtra por participação
+  if (lider) qs.set("lider", lider);
 
   const res = await apiFetch(`/inspecoes?${qs.toString()}`);
   const text = await res.text();
@@ -488,9 +492,6 @@ async function fetchRankingColaboradores(){
   return Array.isArray(data.results) ? data.results : [];
 }
 
-/* ============================
-   ABRANGÊNCIA
-============================ */
 function splitNomesCampo(v){
   const s = String(v||"").trim();
   if (!s) return [];
@@ -521,9 +522,6 @@ function calcAbrangencia(inspecoesFiltradas, rankingFiltrado){
   return { total, inspecionados, pct };
 }
 
-/* ============================
-   TOOLTIP (Canvas)
-============================ */
 function getTooltipEl(){ return document.getElementById("canvasTooltip"); }
 
 function showTip(text, clientX, clientY){
@@ -588,9 +586,6 @@ function attachCanvasTooltip(canvas){
   window.addEventListener("scroll", hideTip, { passive:true });
 }
 
-/* ============================
-   GRÁFICOS (Canvas com tooltip)
-============================ */
 function drawBars(canvas, labels, valuesA, valuesB, labelA="A", labelB="B"){
   const ctx = canvas.getContext("2d");
 
@@ -605,12 +600,12 @@ function drawBars(canvas, labels, valuesA, valuesB, labelA="A", labelB="B"){
   const chartW = W - pad*2;
   const chartH = H - pad*2;
 
-  const maxV = Math.max(1, ...valuesA, ...valuesB);
-  const cols = labels.length;
+  const allValues = [...(valuesA || []), ...(valuesB || [])];
+  const maxV = Math.max(1, ...allValues);
+  const cols = labels.length || 1;
 
   canvas._bars = [];
 
-  // eixos
   ctx.strokeStyle = "#ddd";
   ctx.beginPath();
   ctx.moveTo(pad, pad);
@@ -618,7 +613,6 @@ function drawBars(canvas, labels, valuesA, valuesB, labelA="A", labelB="B"){
   ctx.lineTo(W-pad, H-pad);
   ctx.stroke();
 
-  // grid
   ctx.fillStyle = "#666";
   ctx.font = "12px Segoe UI, Arial";
   const steps = 4;
@@ -635,11 +629,13 @@ function drawBars(canvas, labels, valuesA, valuesB, labelA="A", labelB="B"){
   }
 
   const groupW = chartW / cols;
-  const barW = Math.max(10, Math.min(18, groupW/4));
-  const gap = barW;
+  const hasB = !!labelB;
+  const barW = hasB ? Math.max(10, Math.min(18, groupW/4)) : Math.max(18, Math.min(40, groupW/2.8));
+  const gap = hasB ? barW : 0;
 
   for(let i=0;i<cols;i++){
-    const x0 = pad + i*groupW + (groupW - (barW*2 + gap))/2;
+    const totalBarsWidth = hasB ? (barW*2 + gap) : barW;
+    const x0 = pad + i*groupW + (groupW - totalBarsWidth)/2;
 
     const a = Number(valuesA[i] ?? 0);
     const b = Number(valuesB[i] ?? 0);
@@ -650,23 +646,23 @@ function drawBars(canvas, labels, valuesA, valuesB, labelA="A", labelB="B"){
     const yA = (H-pad)-hA;
     const yB = (H-pad)-hB;
 
-    // A
     ctx.fillStyle = "rgba(0,151,206,.25)";
     ctx.strokeStyle = "rgba(0,151,206,.35)";
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.rect(x0, yA, barW, hA);
-    ctx.fill(); ctx.stroke();
+    ctx.fill();
+    ctx.stroke();
 
     canvas._bars.push({ x:x0, y:yA, w:barW, h:hA, group: labels[i], series: labelA, value: a });
 
-    // B
-    if (labelB){
+    if (hasB){
       ctx.fillStyle = "rgba(255,99,71,.25)";
       ctx.strokeStyle = "rgba(255,99,71,.35)";
       ctx.beginPath();
       ctx.rect(x0+barW+gap, yB, barW, hB);
-      ctx.fill(); ctx.stroke();
+      ctx.fill();
+      ctx.stroke();
 
       canvas._bars.push({ x:x0+barW+gap, y:yB, w:barW, h:hB, group: labels[i], series: labelB, value: b });
     }
@@ -679,33 +675,19 @@ function drawBars(canvas, labels, valuesA, valuesB, labelA="A", labelB="B"){
 }
 
 function drawWeeks(canvas, weeks, mesYYYYMM){
-  const n = weeksInMonth(mesYYYYMM); // 4 ou 5
+  const n = weeksInMonth(mesYYYYMM);
   const labels = Array.from({length: n}, (_, i) => `S${i+1}`);
-
-  // garante o tamanho certo
   const vals = Array.isArray(weeks) ? weeks.slice(0, n) : [];
   while (vals.length < n) vals.push(0);
-
-  drawBars(canvas, labels, vals, [], "Inspeções", ""); // labelB vazio = não desenha B
+  drawBars(canvas, labels, vals, [], "Inspeções", "");
 }
 
-function nomeMes(mm){
-  const map = {"01":"Jan","02":"Fev","03":"Mar","04":"Abr","05":"Mai","06":"Jun","07":"Jul","08":"Ago","09":"Set","10":"Out","11":"Nov","12":"Dez"};
-  return map[mm] || mm;
-}
-
-/* ============================
-   SELECTS
-============================ */
 function getGestoresDoMapa(regionalSelecionada = ""){
   const lideres = Object.keys(REGIONAL_POR_LIDER || {});
-
-  // se escolheu regional, filtra só os gestores daquela regional
   const filtrados = regionalSelecionada
     ? lideres.filter(l => (REGIONAL_POR_LIDER[l] || "") === regionalSelecionada)
     : lideres;
 
-  // ordena bonitinho
   return filtrados.sort((a,b)=> normName(a).localeCompare(normName(b)));
 }
 
@@ -714,7 +696,6 @@ async function carregarSupervisoresNoSelect(){
   if (!sel) return;
 
   const regional = document.getElementById("filtroRegional")?.value || "";
-
   const lideres = getGestoresDoMapa(regional);
 
   const valorAtual = sel.value || "";
@@ -722,39 +703,15 @@ async function carregarSupervisoresNoSelect(){
     `<option value="">Todos</option>` +
     lideres.map(l => `<option value="${String(l).replaceAll('"',"&quot;")}">${l}</option>`).join("");
 
-  // tenta manter o selecionado (se ainda existir)
   if (valorAtual && lideres.some(x => normName(x) === normName(valorAtual))){
     sel.value = valorAtual;
   } else {
-    // se não, tenta setar o próprio usuário
     const meu = normName(getNomeDoToken());
     const found = lideres.find(x => normName(x) === meu);
     if (found) sel.value = found;
   }
 }
-/* ============================
-   DASHBOARD CORE
-============================ */
-  async function atualizarDashboard(){
-  try{
-    setStatus("Carregando dados...", "");
 
-    const mes = document.getElementById("filtroMes")?.value || mesAtualYYYYMM();
-    const regional = document.getElementById("filtroRegional")?.value || "";
-    const supervisor = document.getElementById("filtroSupervisor")?.value || "";
-
-    const { ini, fim, ano, mm } = mesToRange(mes);
-
-    // ========= 1) KPIs + gráfico do ano (OFICIAL: /stats-mensal)
-    // Obs: se supervisor vazio => "geral" (admin/super vê geral; user normal o Worker força pra ele)
-    // ========= 1) KPIs + gráfico do ano (OFICIAL: /stats-mensal)
-// Pega SEM supervisor para não “igualar” por causa do backend
-// ========= 1) KPIs do mês (via inspeções reais)
-
-// pega inspeções do mês JÁ FILTRADAS por participação do supervisor (lider/auditor/cadastrante)
-const inspecoesMesBase = await fetchInspecoesRange(ini, fim, supervisor || "");
-
-// helper pra descobrir "quem é o líder" do registro (pra regional)
 function getNomeLiderInspecao(i){
   return String(
     i.lider ??
@@ -765,15 +722,6 @@ function getNomeLiderInspecao(i){
   ).trim();
 }
 
-// aplica regional (se selecionado)
-const inspecoesMesFiltradas = !regional
-  ? inspecoesMesBase
-  : inspecoesMesBase.filter(i => isInRegionalByLiderNome(getNomeLiderInspecao(i), regional));
-
-// total inspeções do mês
-const totalInspecoesMes = inspecoesMesFiltradas.length;
-
-// soma NC do mês (tentando vários campos)
 function getNC(i){
   const cand = [
     i.qtd_nc,
@@ -790,51 +738,8 @@ function getNC(i){
   if (Array.isArray(i.nao_conformidade_itens)) return i.nao_conformidade_itens.length;
   return 0;
 }
-const totalNCMes = inspecoesMesFiltradas.reduce((acc, i) => acc + getNC(i), 0);
 
-// aplica nos KPIs
-document.getElementById("kpiInspecoes").textContent = totalInspecoesMes;
-document.getElementById("kpiNC").textContent = totalNCMes;
-
-document.getElementById("kpiInspecoesSub").textContent =
-  supervisor ? `Supervisor: ${supervisor}` :
-  (regional ? `Regional: ${regional} (parcial*)` : "Geral");
-
-document.getElementById("kpiNCSub").textContent =
-  `Escopo do mês ${mes} •`;
-
-    try{
-  // agora filtra pelo supervisor quando selecionado
-  const statsAno = await fetchStatsMensal(ano, supervisor || "");
-
-  const labelsAno = ["01","02","03","04","05","06","07","08","09","10","11","12"].map(nomeMes);
-
-  const porMesMap = new Map();
-  (statsAno.por_mes || []).forEach(r => {
-    const k = String(r.mes || "").padStart(2, "0");
-    porMesMap.set(k, r);
-  });
-
-  const insAno = [];
-  const ncAno  = [];
-
-  for (const m2 of ["01","02","03","04","05","06","07","08","09","10","11","12"]) {
-    const r2 = porMesMap.get(m2) || {};
-    insAno.push(Number(r2.total || 0));
-    ncAno.push(Number(r2.soma_nao_conforme || 0));
-  }
-
-  const cvAno = document.getElementById("cvAno");
-  if (cvAno) drawBars(cvAno, labelsAno, insAno, ncAno, "Inspeções", "NC");
-} catch (e) {
-  console.error("Erro ao desenhar gráfico do ano:", e);
-}
-
-
-    // ========= 2) Frequência semanal (OFICIAL: /frequencia)
-    // /frequencia exige gestor. Se "Todos", não dá (precisa endpoint agregador).
-    function getISODateFromInspecao(i){
-  // tenta vários campos comuns
+function getISODateFromInspecao(i){
   const raw =
     i.data_iso ??
     i.data_inspecao ??
@@ -844,7 +749,6 @@ document.getElementById("kpiNCSub").textContent =
   const s = String(raw || "").trim();
   if (!s) return null;
 
-  // pega yyyy-mm-dd (ou tenta dd/mm/yyyy)
   if (s.includes("/")) {
     const [d,m,y] = s.split("/");
     if (y && m && d) return `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
@@ -852,47 +756,112 @@ document.getElementById("kpiNCSub").textContent =
   return s.slice(0,10);
 }
 
-function weekOfMonthFromISO(iso){
-  const dt = new Date(`${iso}T00:00:00`);
-  if (isNaN(dt.getTime())) return null;
-  return Math.floor((dt.getDate() - 1) / 7) + 1; // 1..5
-}
+function agruparPorMes(inspecoes, mesesLista){
+  const map = new Map();
+  mesesLista.forEach(m => map.set(m, { inspecoes: 0, nc: 0 }));
 
-if (supervisor) {
-  // mantém como está: por supervisor via endpoint
-  const freq = await fetchFrequencia(mes, supervisor);
-  const weeks = Array.isArray(freq.weeks) ? freq.weeks : [0,0,0,0,0];
-  drawWeeks(document.getElementById("cvFrequencia"), weeks);
-} else {
-  // GERAL: calcula no front
-  const insps = await fetchInspecoesRange(ini, fim, ""); // geral do mês
-  const weeks = [0,0,0,0,0];
-
-  for (const i of (insps || [])) {
+  (inspecoes || []).forEach(i => {
     const iso = getISODateFromInspecao(i);
-    if (!iso) continue;
-    const w = weekOfMonthFromISO(iso);
-    if (!w || w < 1 || w > 5) continue;
-    weeks[w-1] += 1;
-  }
+    if (!iso) return;
+    const chave = iso.slice(0,7);
+    if (!map.has(chave)) return;
+    const atual = map.get(chave);
+    atual.inspecoes += 1;
+    atual.nc += getNC(i);
+  });
 
-  drawWeeks(document.getElementById("cvFrequencia"), weeks);
+  return mesesLista.map(m => ({
+    mes: m,
+    label: labelMes(m),
+    inspecoes: map.get(m)?.inspecoes || 0,
+    nc: map.get(m)?.nc || 0
+  }));
 }
 
-    // ========= 3) Abrangência (ANUAL)
-    // pega ano inteiro do ano do mês selecionado
-    const iniAno = `${ano}-01-01`;
-    const fimAno = `${ano}-12-31`;
+async function atualizarDashboard(){
+  try{
+    setStatus("Carregando dados...", "");
 
-    // inspeções do ano (não do mês)
-    const inspecoesAno = await fetchInspecoesRange(iniAno, fimAno, supervisor);
+    const mesIniRaw = document.getElementById("filtroMesIni")?.value || mesAtualYYYYMM();
+    const mesFimRaw = document.getElementById("filtroMesFim")?.value || mesIniRaw;
+    const regional = document.getElementById("filtroRegional")?.value || "";
+    const supervisor = document.getElementById("filtroSupervisor")?.value || "";
 
-    // filtro regional no front
-    const inspecoesAnoRegional = !regional
-      ? inspecoesAno
-      : inspecoesAno.filter(i => isInRegionalByLiderNome(i.lider, regional));
+    const { mesIni, mesFim } = ordenarMeses(mesIniRaw, mesFimRaw);
+    const periodo = monthRangeToDates(mesIni, mesFim);
+    const mesesLista = getMonthsBetween(mesIni, mesFim);
+    const ehMesUnico = mesIni === mesFim;
 
-    // ranking do time (continua igual)
+    document.getElementById("filtroMesIni").value = mesIni;
+    document.getElementById("filtroMesFim").value = mesFim;
+
+    const inspecoesPeriodoBase = await fetchInspecoesRange(periodo.ini, periodo.fim, supervisor || "");
+
+    const inspecoesPeriodoFiltradas = !regional
+      ? inspecoesPeriodoBase
+      : inspecoesPeriodoBase.filter(i => isInRegionalByLiderNome(getNomeLiderInspecao(i), regional));
+
+    const totalInspecoesPeriodo = inspecoesPeriodoFiltradas.length;
+    const totalNCPeriodo = inspecoesPeriodoFiltradas.reduce((acc, i) => acc + getNC(i), 0);
+
+    document.getElementById("kpiInspecoes").textContent = totalInspecoesPeriodo;
+    document.getElementById("kpiNC").textContent = totalNCPeriodo;
+
+    const rotuloEscopo = ehMesUnico ? `Mês ${mesIni}` : `Período ${mesIni} até ${mesFim}`;
+
+    document.getElementById("kpiInspecoesSub").textContent =
+      supervisor ? `${rotuloEscopo} • Supervisor: ${supervisor}` :
+      (regional ? `${rotuloEscopo} • Regional: ${regional}` : rotuloEscopo);
+
+    document.getElementById("kpiNCSub").textContent = rotuloEscopo;
+
+    const agrupado = agruparPorMes(inspecoesPeriodoFiltradas, mesesLista);
+    const labelsPeriodo = agrupado.map(x => x.label);
+    const insPeriodo = agrupado.map(x => x.inspecoes);
+    const ncPeriodo = agrupado.map(x => x.nc);
+
+    drawBars(
+      document.getElementById("cvAno"),
+      labelsPeriodo,
+      insPeriodo,
+      ncPeriodo,
+      "Inspeções",
+      "NC"
+    );
+
+    if (ehMesUnico) {
+      document.getElementById("tituloGraficoEsquerda").innerHTML = `<i class="bi bi-graph-up"></i> Frequência semanal (mês)`;
+      document.getElementById("hintGraficoEsquerda").textContent = `Inspeções de ${mesIni}`;
+
+      if (supervisor) {
+        const freq = await fetchFrequencia(mesIni, supervisor);
+        const weeks = Array.isArray(freq.weeks) ? freq.weeks : [0,0,0,0,0];
+        drawWeeks(document.getElementById("cvFrequencia"), weeks, mesIni);
+      } else {
+        const weeks = [0,0,0,0,0];
+        for (const i of inspecoesPeriodoFiltradas) {
+          const iso = getISODateFromInspecao(i);
+          if (!iso) continue;
+          const w = weekOfMonthFromISO(iso);
+          if (!w || w < 1 || w > 5) continue;
+          weeks[w-1] += 1;
+        }
+        drawWeeks(document.getElementById("cvFrequencia"), weeks, mesIni);
+      }
+    } else {
+      document.getElementById("tituloGraficoEsquerda").innerHTML = `<i class="bi bi-graph-up"></i> Inspeções por mês (período)`;
+      document.getElementById("hintGraficoEsquerda").textContent = `${mesIni} até ${mesFim}`;
+
+      drawBars(
+        document.getElementById("cvFrequencia"),
+        labelsPeriodo,
+        insPeriodo,
+        [],
+        "Inspeções",
+        ""
+      );
+    }
+
     const ranking = await fetchRankingColaboradores();
 
     const rankingFiltrado = (ranking || []).filter(r=>{
@@ -902,8 +871,7 @@ if (supervisor) {
       return true;
     });
 
-    // abrangência anual
-    const ab = calcAbrangencia(inspecoesAnoRegional, rankingFiltrado);
+    const ab = calcAbrangencia(inspecoesPeriodoFiltradas, rankingFiltrado);
 
     document.getElementById("kpiAbrangencia").textContent =
       `${ab.pct.toFixed(1).replace(".",",")}%`;
@@ -913,10 +881,8 @@ if (supervisor) {
     document.getElementById("kpiAbrangenciaSub").textContent =
       `${ab.inspecionados} inspecionados / ${ab.total} total • Faltam: ${faltamColabs}`;
 
-    // ---- Prazo fixo: começa 03/02/2026 e dura 4 meses ----
     const inicioPrazo = new Date("2026-02-03T00:00:00");
-    const fimPrazo = addMonths(inicioPrazo, 4); // 4 meses depois
-
+    const fimPrazo = addMonths(inicioPrazo, 4);
     const hoje = new Date();
     const diasTotais = Math.max(0, diffDays(inicioPrazo, fimPrazo));
     const diasRestantes = Math.max(0, diffDays(hoje, fimPrazo));
@@ -927,28 +893,31 @@ if (supervisor) {
         `Prazo: ${diasRestantes} dia(s) restantes • até ${formatarDataBR(fimPrazo.toISOString().slice(0,10))} (total ${diasTotais} dias)`;
     }
 
-    setStatus(`Dashboard atualizado • Mês ${mes}`, "success");
+    setStatus(`Dashboard atualizado • ${rotuloEscopo}`, "success");
   } catch(e){
     console.error(e);
     setStatus("Erro ao carregar dashboard (veja o console).", "error");
   }
 }
 
-/* ============================
-   INIT
-============================ */
 (function init(){
-  const mesEl = document.getElementById("filtroMes");
-  if (mesEl && !mesEl.value) mesEl.value = mesAtualYYYYMM();
+  const atual = mesAtualYYYYMM();
+
+  const mesIniEl = document.getElementById("filtroMesIni");
+  const mesFimEl = document.getElementById("filtroMesFim");
+
+  if (mesIniEl && !mesIniEl.value) mesIniEl.value = atual;
+  if (mesFimEl && !mesFimEl.value) mesFimEl.value = atual;
 
   carregarSupervisoresNoSelect();
 
   document.getElementById("btnAtualizar")?.addEventListener("click", atualizarDashboard);
-  document.getElementById("filtroMes")?.addEventListener("change", atualizarDashboard);
+  document.getElementById("filtroMesIni")?.addEventListener("change", atualizarDashboard);
+  document.getElementById("filtroMesFim")?.addEventListener("change", atualizarDashboard);
   document.getElementById("filtroRegional")?.addEventListener("change", () => {
-  carregarSupervisoresNoSelect();   // ✅ refaz a lista conforme a regional
-  atualizarDashboard();            // ✅ aplica filtros
-});
+    carregarSupervisoresNoSelect();
+    atualizarDashboard();
+  });
   document.getElementById("filtroSupervisor")?.addEventListener("change", atualizarDashboard);
 
   atualizarDashboard();
