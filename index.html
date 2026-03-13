@@ -123,9 +123,15 @@
       <a class="btn-link" href="https://coec-epb.github.io/geral_colaboradores/" title="Voltar para Inspeções">
         <i class="bi bi-arrow-left"></i> Inspeções
       </a>
+
+      <button class="secondary" id="btnDownloadAnalitico">
+        <i class="bi bi-download"></i> Download Analítico
+      </button>
+
       <button class="secondary" id="btnAtualizar">
         <i class="bi bi-arrow-repeat"></i> Atualizar
       </button>
+
       <button class="secondary" onclick="logout()">
         <i class="bi bi-box-arrow-right"></i> Sair
       </button>
@@ -152,6 +158,15 @@
             <option value="CENTRO">CENTRO</option>
             <option value="LESTE">LESTE</option>
             <option value="OESTE">OESTE</option>
+          </select>
+        </div>
+
+        <div>
+          <div class="hint" style="font-weight:700;margin-bottom:6px;">Tipo de equipe</div>
+          <select id="filtroTipoEquipe" style="min-width:180px;">
+            <option value="">Todas</option>
+            <option value="ENERGISA">Energisa</option>
+            <option value="PRESTADORA">Prestadora</option>
           </select>
         </div>
 
@@ -229,9 +244,21 @@
 <script>
 const API = "https://inspecoes.pedro-fillype.workers.dev";
 
+const dashboardState = {
+  inspecoesFiltradas: [],
+  rankingFiltrado: [],
+  filtros: {
+    mesIni: "",
+    mesFim: "",
+    regional: "",
+    supervisor: "",
+    tipoEquipe: ""
+  }
+};
+
 function formatarDataBR(iso){
   const s = String(iso || "").trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return s || "-";
+  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(s)) return s || "-";
   const [y,m,d] = s.split("-");
   return `${d}/${m}/${y}`;
 }
@@ -330,8 +357,16 @@ function getNomeDoToken(){
 
 function normName(s){
   return String(s || "")
-    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-    .replace(/\s+/g," ").trim().toUpperCase();
+    .normalize("NFD").replace(/[\\u0300-\\u036f]/g,"")
+    .replace(/\\s+/g," ").trim().toUpperCase();
+}
+
+function normalizarTexto(v){
+  return String(v || "")
+    .normalize("NFD").replace(/[\\u0300-\\u036f]/g, "")
+    .replace(/\\s+/g, " ")
+    .trim()
+    .toUpperCase();
 }
 
 const REGIONAL_POR_LIDER = {
@@ -449,14 +484,6 @@ function nomeMes(mm){
 function labelMes(yyyyMM){
   const [y, m] = String(yyyyMM || "").split("-");
   return `${nomeMes(m)}/${String(y).slice(-2)}`;
-}
-
-function parseISODateFlex(v){
-  const s = String(v||"").trim();
-  if (!s) return null;
-  const iso = s.slice(0,10);
-  const dt = new Date(`${iso}T00:00:00`);
-  return isNaN(dt.getTime()) ? null : dt;
 }
 
 async function fetchFrequencia(mes, gestor){
@@ -598,7 +625,7 @@ function drawBars(canvas, labels, valuesA, valuesB, labelA="A", labelB="B"){
 
   const padLeft = 40;
   const padRight = 20;
-  const padTop = 30;     // espaço extra para os valores acima das barras
+  const padTop = 30;
   const padBottom = 40;
 
   const chartW = W - padLeft - padRight;
@@ -606,12 +633,11 @@ function drawBars(canvas, labels, valuesA, valuesB, labelA="A", labelB="B"){
 
   const allValues = [...(valuesA || []), ...(valuesB || [])];
   const maxBase = Math.max(1, ...allValues);
-  const maxV = maxBase * 1.15; // folga para caber o valor acima da barra
+  const maxV = maxBase * 1.15;
   const cols = labels.length || 1;
 
   canvas._bars = [];
 
-  // Eixos
   ctx.strokeStyle = "#ddd";
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -620,7 +646,6 @@ function drawBars(canvas, labels, valuesA, valuesB, labelA="A", labelB="B"){
   ctx.lineTo(W - padRight, H - padBottom);
   ctx.stroke();
 
-  // Linhas horizontais e escala
   ctx.font = "12px Segoe UI, Arial";
   const steps = 4;
   for(let s = 0; s <= steps; s++){
@@ -659,7 +684,6 @@ function drawBars(canvas, labels, valuesA, valuesB, labelA="A", labelB="B"){
     const yA = (H - padBottom) - hA;
     const yB = (H - padBottom) - hB;
 
-    // Barra A
     ctx.fillStyle = "rgba(0,151,206,.25)";
     ctx.strokeStyle = "rgba(0,151,206,.35)";
     ctx.lineWidth = 1;
@@ -673,14 +697,12 @@ function drawBars(canvas, labels, valuesA, valuesB, labelA="A", labelB="B"){
       group: labels[i], series: labelA, value: a
     });
 
-    // Valor da barra A
     ctx.fillStyle = "#007fb0";
     ctx.font = "bold 12px Segoe UI, Arial";
     ctx.textAlign = "center";
     ctx.textBaseline = "bottom";
     ctx.fillText(String(a), x0 + barW / 2, yA - 4);
 
-    // Barra B
     if (hasB){
       ctx.fillStyle = "rgba(255,99,71,.25)";
       ctx.strokeStyle = "rgba(255,99,71,.35)";
@@ -694,7 +716,6 @@ function drawBars(canvas, labels, valuesA, valuesB, labelA="A", labelB="B"){
         group: labels[i], series: labelB, value: b
       });
 
-      // Valor da barra B
       ctx.fillStyle = "#d65a3a";
       ctx.font = "bold 12px Segoe UI, Arial";
       ctx.textAlign = "center";
@@ -702,7 +723,6 @@ function drawBars(canvas, labels, valuesA, valuesB, labelA="A", labelB="B"){
       ctx.fillText(String(b), x0 + barW + gap + barW / 2, yB - 4);
     }
 
-    // Rótulo do eixo X
     ctx.fillStyle = "#555";
     ctx.font = "12px Segoe UI, Arial";
     ctx.textAlign = "center";
@@ -795,6 +815,36 @@ function getISODateFromInspecao(i){
   return s.slice(0,10);
 }
 
+function getTipoEquipeInspecao(i){
+  const bruto =
+    i.tipo_equipe ??
+    i.equipe_tipo ??
+    i.tipo ??
+    i.empresa_tipo ??
+    i.vinculo ??
+    i.origem_equipe ??
+    i.tipo_de_equipe ??
+    "";
+
+  const s = normalizarTexto(bruto);
+  if (!s) return "";
+
+  if (s.includes("PRESTADORA") || s.includes("TERCEIR") || s.includes("CONTRATADA")) {
+    return "PRESTADORA";
+  }
+
+  if (s.includes("ENERGISA") || s.includes("PROPRIA") || s.includes("PRÓPRIA")) {
+    return "ENERGISA";
+  }
+
+  return s;
+}
+
+function filtrarPorTipoEquipe(lista, tipoEquipe){
+  if (!tipoEquipe) return lista || [];
+  return (lista || []).filter(i => getTipoEquipeInspecao(i) === tipoEquipe);
+}
+
 function agruparPorMes(inspecoes, mesesLista){
   const map = new Map();
   mesesLista.forEach(m => map.set(m, { inspecoes: 0, nc: 0 }));
@@ -817,6 +867,127 @@ function agruparPorMes(inspecoes, mesesLista){
   }));
 }
 
+function montarEscopoTexto(rotuloEscopo, regional, supervisor, tipoEquipe){
+  const escopos = [rotuloEscopo];
+  if (regional) escopos.push(`Regional: ${regional}`);
+  if (supervisor) escopos.push(`Supervisor: ${supervisor}`);
+  if (tipoEquipe) escopos.push(`Equipe: ${tipoEquipe}`);
+  return escopos.join(" • ");
+}
+
+function escapeCSV(value){
+  const s = String(value ?? "");
+  if (/[",;\n]/.test(s)) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+
+function obterColunasAnalitico(lista){
+  const preferidas = [
+    "id",
+    "numero",
+    "codigo",
+    "data",
+    "data_iso",
+    "data_inspecao",
+    "data_registro",
+    "regional",
+    "lider",
+    "gestor_imediato",
+    "supervisor",
+    "gestor",
+    "tipo_equipe",
+    "equipe_tipo",
+    "empresa_tipo",
+    "vinculo",
+    "origem_equipe",
+    "auditados",
+    "colaborador_1",
+    "colaborador_2",
+    "colaborador_3",
+    "colaborador_4",
+    "colaborador_5",
+    "qtd_nc",
+    "qtd_nao_conformidade",
+    "nao_conformidades",
+    "nao_conforme",
+    "nc",
+    "total_nc",
+    "observacao",
+    "observacoes",
+    "descricao",
+    "titulo"
+  ];
+
+  const set = new Set(preferidas);
+
+  (lista || []).forEach(item => {
+    Object.keys(item || {}).forEach(k => set.add(k));
+  });
+
+  return Array.from(set).filter(col =>
+    (lista || []).some(item => Object.prototype.hasOwnProperty.call(item || {}, col))
+  );
+}
+
+function baixarCSV(nomeArquivo, linhas){
+  const csv = "\\uFEFF" + linhas.join("\\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = nomeArquivo;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function exportarAnaliticoCSV(){
+  try{
+    const lista = Array.isArray(dashboardState.inspecoesFiltradas) ? dashboardState.inspecoesFiltradas : [];
+
+    if (!lista.length){
+      setStatus("Não há dados filtrados para exportar o analítico.", "error");
+      return;
+    }
+
+    const colunas = obterColunasAnalitico(lista);
+
+    const linhas = [];
+    linhas.push(colunas.map(escapeCSV).join(";"));
+
+    lista.forEach(item => {
+      const row = colunas.map(col => {
+        const valor = item?.[col];
+        if (Array.isArray(valor)) return escapeCSV(valor.join(" | "));
+        if (valor && typeof valor === "object") return escapeCSV(JSON.stringify(valor));
+        return escapeCSV(valor ?? "");
+      });
+      linhas.push(row.join(";"));
+    });
+
+    const f = dashboardState.filtros || {};
+    const nome = [
+      "analitico_inspecoes",
+      f.mesIni || "sem_inicio",
+      f.mesFim || "sem_fim",
+      f.regional || "todas_regioes",
+      f.supervisor ? normName(f.supervisor).replace(/\\s+/g, "_") : "todos_supervisores",
+      f.tipoEquipe || "todas_equipes"
+    ].join("_") + ".csv";
+
+    baixarCSV(nome, linhas);
+    setStatus(`Analítico exportado com ${lista.length} registro(s).`, "success");
+  } catch (e){
+    console.error(e);
+    setStatus("Erro ao exportar o analítico.", "error");
+  }
+}
+
 async function atualizarDashboard(){
   try{
     setStatus("Carregando dados...", "");
@@ -825,6 +996,7 @@ async function atualizarDashboard(){
     const mesFimRaw = document.getElementById("filtroMesFim")?.value || mesIniRaw;
     const regional = document.getElementById("filtroRegional")?.value || "";
     const supervisor = document.getElementById("filtroSupervisor")?.value || "";
+    const tipoEquipe = document.getElementById("filtroTipoEquipe")?.value || "";
 
     const { mesIni, mesFim } = ordenarMeses(mesIniRaw, mesFimRaw);
     const periodo = monthRangeToDates(mesIni, mesFim);
@@ -836,9 +1008,11 @@ async function atualizarDashboard(){
 
     const inspecoesPeriodoBase = await fetchInspecoesRange(periodo.ini, periodo.fim, supervisor || "");
 
-    const inspecoesPeriodoFiltradas = !regional
+    let inspecoesPeriodoFiltradas = !regional
       ? inspecoesPeriodoBase
       : inspecoesPeriodoBase.filter(i => isInRegionalByLiderNome(getNomeLiderInspecao(i), regional));
+
+    inspecoesPeriodoFiltradas = filtrarPorTipoEquipe(inspecoesPeriodoFiltradas, tipoEquipe);
 
     const totalInspecoesPeriodo = inspecoesPeriodoFiltradas.length;
     const totalNCPeriodo = inspecoesPeriodoFiltradas.reduce((acc, i) => acc + getNC(i), 0);
@@ -847,12 +1021,10 @@ async function atualizarDashboard(){
     document.getElementById("kpiNC").textContent = totalNCPeriodo;
 
     const rotuloEscopo = ehMesUnico ? `Mês ${mesIni}` : `Período ${mesIni} até ${mesFim}`;
+    const escopoTexto = montarEscopoTexto(rotuloEscopo, regional, supervisor, tipoEquipe);
 
-    document.getElementById("kpiInspecoesSub").textContent =
-      supervisor ? `${rotuloEscopo} • Supervisor: ${supervisor}` :
-      (regional ? `${rotuloEscopo} • Regional: ${regional}` : rotuloEscopo);
-
-    document.getElementById("kpiNCSub").textContent = rotuloEscopo;
+    document.getElementById("kpiInspecoesSub").textContent = escopoTexto;
+    document.getElementById("kpiNCSub").textContent = escopoTexto;
 
     const agrupado = agruparPorMes(inspecoesPeriodoFiltradas, mesesLista);
     const labelsPeriodo = agrupado.map(x => x.label);
@@ -874,15 +1046,29 @@ async function atualizarDashboard(){
 
       if (supervisor) {
         const freq = await fetchFrequencia(mesIni, supervisor);
-        const weeks = Array.isArray(freq.weeks) ? freq.weeks : [0,0,0,0,0];
+        let weeks = Array.isArray(freq.weeks) ? freq.weeks : [0,0,0,0,0];
+
+        if (tipoEquipe) {
+          const n = weeksInMonth(mesIni);
+          weeks = new Array(n).fill(0);
+          for (const i of inspecoesPeriodoFiltradas) {
+            const iso = getISODateFromInspecao(i);
+            if (!iso || iso.slice(0,7) !== mesIni) continue;
+            const w = weekOfMonthFromISO(iso);
+            if (!w || w < 1 || w > n) continue;
+            weeks[w-1] += 1;
+          }
+        }
+
         drawWeeks(document.getElementById("cvFrequencia"), weeks, mesIni);
       } else {
-        const weeks = [0,0,0,0,0];
+        const n = weeksInMonth(mesIni);
+        const weeks = new Array(n).fill(0);
         for (const i of inspecoesPeriodoFiltradas) {
           const iso = getISODateFromInspecao(i);
           if (!iso) continue;
           const w = weekOfMonthFromISO(iso);
-          if (!w || w < 1 || w > 5) continue;
+          if (!w || w < 1 || w > n) continue;
           weeks[w-1] += 1;
         }
         drawWeeks(document.getElementById("cvFrequencia"), weeks, mesIni);
@@ -904,9 +1090,34 @@ async function atualizarDashboard(){
     const ranking = await fetchRankingColaboradores();
 
     const rankingFiltrado = (ranking || []).filter(r=>{
-      const liderR = String(r.lider||"").trim();
+      const liderR = String(r.lider || "").trim();
+
       if (regional && !isInRegionalByLiderNome(liderR, regional)) return false;
       if (supervisor && normName(liderR) !== normName(supervisor)) return false;
+
+      if (tipoEquipe) {
+        const tipoRBruto =
+          r.tipo_equipe ??
+          r.equipe_tipo ??
+          r.tipo ??
+          r.empresa_tipo ??
+          r.vinculo ??
+          r.origem_equipe ??
+          r.tipo_de_equipe ??
+          "";
+
+        const tipoR = normalizarTexto(tipoRBruto);
+
+        const tipoClassificado =
+          (tipoR.includes("PRESTADORA") || tipoR.includes("TERCEIR") || tipoR.includes("CONTRATADA"))
+            ? "PRESTADORA"
+            : ((tipoR.includes("ENERGISA") || tipoR.includes("PROPRIA") || tipoR.includes("PRÓPRIA"))
+                ? "ENERGISA"
+                : tipoR);
+
+        if (tipoClassificado !== tipoEquipe) return false;
+      }
+
       return true;
     });
 
@@ -932,6 +1143,10 @@ async function atualizarDashboard(){
         `Prazo: ${diasRestantes} dia(s) restantes • até ${formatarDataBR(fimPrazo.toISOString().slice(0,10))} (total ${diasTotais} dias)`;
     }
 
+    dashboardState.inspecoesFiltradas = inspecoesPeriodoFiltradas;
+    dashboardState.rankingFiltrado = rankingFiltrado;
+    dashboardState.filtros = { mesIni, mesFim, regional, supervisor, tipoEquipe };
+
     setStatus(`Dashboard atualizado • ${rotuloEscopo}`, "success");
   } catch(e){
     console.error(e);
@@ -951,12 +1166,17 @@ async function atualizarDashboard(){
   carregarSupervisoresNoSelect();
 
   document.getElementById("btnAtualizar")?.addEventListener("click", atualizarDashboard);
+  document.getElementById("btnDownloadAnalitico")?.addEventListener("click", exportarAnaliticoCSV);
+
   document.getElementById("filtroMesIni")?.addEventListener("change", atualizarDashboard);
   document.getElementById("filtroMesFim")?.addEventListener("change", atualizarDashboard);
+
   document.getElementById("filtroRegional")?.addEventListener("change", () => {
     carregarSupervisoresNoSelect();
     atualizarDashboard();
   });
+
+  document.getElementById("filtroTipoEquipe")?.addEventListener("change", atualizarDashboard);
   document.getElementById("filtroSupervisor")?.addEventListener("change", atualizarDashboard);
 
   atualizarDashboard();
