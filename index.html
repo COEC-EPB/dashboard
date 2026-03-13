@@ -596,56 +596,70 @@ function drawBars(canvas, labels, valuesA, valuesB, labelA="A", labelB="B"){
 
   ctx.clearRect(0,0,W,H);
 
-  const pad = 40;
-  const chartW = W - pad*2;
-  const chartH = H - pad*2;
+  const padLeft = 40;
+  const padRight = 20;
+  const padTop = 30;     // espaço extra para os valores acima das barras
+  const padBottom = 40;
+
+  const chartW = W - padLeft - padRight;
+  const chartH = H - padTop - padBottom;
 
   const allValues = [...(valuesA || []), ...(valuesB || [])];
-  const maxV = Math.max(1, ...allValues);
+  const maxBase = Math.max(1, ...allValues);
+  const maxV = maxBase * 1.15; // folga para caber o valor acima da barra
   const cols = labels.length || 1;
 
   canvas._bars = [];
 
+  // Eixos
   ctx.strokeStyle = "#ddd";
+  ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(pad, pad);
-  ctx.lineTo(pad, H-pad);
-  ctx.lineTo(W-pad, H-pad);
+  ctx.moveTo(padLeft, padTop);
+  ctx.lineTo(padLeft, H - padBottom);
+  ctx.lineTo(W - padRight, H - padBottom);
   ctx.stroke();
 
-  ctx.fillStyle = "#666";
+  // Linhas horizontais e escala
   ctx.font = "12px Segoe UI, Arial";
   const steps = 4;
-  for(let s=0;s<=steps;s++){
-    const v = (maxV/steps)*s;
-    const y = (H-pad) - (v/maxV)*chartH;
-    ctx.strokeStyle="#efefef";
+  for(let s = 0; s <= steps; s++){
+    const v = (maxV / steps) * s;
+    const y = (H - padBottom) - (v / maxV) * chartH;
+
+    ctx.strokeStyle = "#efefef";
     ctx.beginPath();
-    ctx.moveTo(pad, y);
-    ctx.lineTo(W-pad, y);
+    ctx.moveTo(padLeft, y);
+    ctx.lineTo(W - padRight, y);
     ctx.stroke();
-    ctx.fillStyle="#666";
-    ctx.fillText(String(Math.round(v)), 8, y+4);
+
+    ctx.fillStyle = "#666";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    ctx.fillText(String(Math.round(v)), padLeft - 8, y);
   }
 
   const groupW = chartW / cols;
   const hasB = !!labelB;
-  const barW = hasB ? Math.max(10, Math.min(18, groupW/4)) : Math.max(18, Math.min(40, groupW/2.8));
+  const barW = hasB
+    ? Math.max(10, Math.min(18, groupW / 4))
+    : Math.max(18, Math.min(40, groupW / 2.8));
   const gap = hasB ? barW : 0;
 
-  for(let i=0;i<cols;i++){
-    const totalBarsWidth = hasB ? (barW*2 + gap) : barW;
-    const x0 = pad + i*groupW + (groupW - totalBarsWidth)/2;
+  for(let i = 0; i < cols; i++){
+    const totalBarsWidth = hasB ? (barW * 2 + gap) : barW;
+    const x0 = padLeft + i * groupW + (groupW - totalBarsWidth) / 2;
 
     const a = Number(valuesA[i] ?? 0);
     const b = Number(valuesB[i] ?? 0);
 
-    const hA = (a/maxV)*chartH;
-    const hB = (b/maxV)*chartH;
+    const hA = (a / maxV) * chartH;
+    const hB = (b / maxV) * chartH;
 
-    const yA = (H-pad)-hA;
-    const yB = (H-pad)-hB;
+    const yA = (H - padBottom) - hA;
+    const yB = (H - padBottom) - hB;
 
+    // Barra A
     ctx.fillStyle = "rgba(0,151,206,.25)";
     ctx.strokeStyle = "rgba(0,151,206,.35)";
     ctx.lineWidth = 1;
@@ -654,21 +668,46 @@ function drawBars(canvas, labels, valuesA, valuesB, labelA="A", labelB="B"){
     ctx.fill();
     ctx.stroke();
 
-    canvas._bars.push({ x:x0, y:yA, w:barW, h:hA, group: labels[i], series: labelA, value: a });
+    canvas._bars.push({
+      x:x0, y:yA, w:barW, h:hA,
+      group: labels[i], series: labelA, value: a
+    });
 
+    // Valor da barra A
+    ctx.fillStyle = "#007fb0";
+    ctx.font = "bold 12px Segoe UI, Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    ctx.fillText(String(a), x0 + barW / 2, yA - 4);
+
+    // Barra B
     if (hasB){
       ctx.fillStyle = "rgba(255,99,71,.25)";
       ctx.strokeStyle = "rgba(255,99,71,.35)";
       ctx.beginPath();
-      ctx.rect(x0+barW+gap, yB, barW, hB);
+      ctx.rect(x0 + barW + gap, yB, barW, hB);
       ctx.fill();
       ctx.stroke();
 
-      canvas._bars.push({ x:x0+barW+gap, y:yB, w:barW, h:hB, group: labels[i], series: labelB, value: b });
+      canvas._bars.push({
+        x:x0 + barW + gap, y:yB, w:barW, h:hB,
+        group: labels[i], series: labelB, value: b
+      });
+
+      // Valor da barra B
+      ctx.fillStyle = "#d65a3a";
+      ctx.font = "bold 12px Segoe UI, Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.fillText(String(b), x0 + barW + gap + barW / 2, yB - 4);
     }
 
-    ctx.fillStyle="#555";
-    ctx.fillText(labels[i], pad + i*groupW + 6, H - pad + 18);
+    // Rótulo do eixo X
+    ctx.fillStyle = "#555";
+    ctx.font = "12px Segoe UI, Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    ctx.fillText(labels[i], padLeft + i * groupW + groupW / 2, H - padBottom + 8);
   }
 
   attachCanvasTooltip(canvas);
