@@ -258,7 +258,7 @@ const dashboardState = {
 
 function formatarDataBR(iso){
   const s = String(iso || "").trim();
-  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(s)) return s || "-";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return s || "-";
   const [y,m,d] = s.split("-");
   return `${d}/${m}/${y}`;
 }
@@ -357,14 +357,14 @@ function getNomeDoToken(){
 
 function normName(s){
   return String(s || "")
-    .normalize("NFD").replace(/[\\u0300-\\u036f]/g,"")
-    .replace(/\\s+/g," ").trim().toUpperCase();
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/\s+/g," ").trim().toUpperCase();
 }
 
 function normalizarTexto(v){
   return String(v || "")
-    .normalize("NFD").replace(/[\\u0300-\\u036f]/g, "")
-    .replace(/\\s+/g, " ")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
     .trim()
     .toUpperCase();
 }
@@ -815,15 +815,10 @@ function getISODateFromInspecao(i){
   return s.slice(0,10);
 }
 
+/* AJUSTE CORRETO: usar equipe_avaliada */
 function getTipoEquipeInspecao(i){
   const bruto =
-    i.tipo_equipe ??
-    i.equipe_tipo ??
-    i.tipo ??
-    i.empresa_tipo ??
-    i.vinculo ??
-    i.origem_equipe ??
-    i.tipo_de_equipe ??
+    i.equipe_avaliada ??
     "";
 
   const s = normalizarTexto(bruto);
@@ -837,7 +832,7 @@ function getTipoEquipeInspecao(i){
     return "ENERGISA";
   }
 
-  return s;
+  return "";
 }
 
 function filtrarPorTipoEquipe(lista, tipoEquipe){
@@ -897,11 +892,7 @@ function obterColunasAnalitico(lista){
     "gestor_imediato",
     "supervisor",
     "gestor",
-    "tipo_equipe",
-    "equipe_tipo",
-    "empresa_tipo",
-    "vinculo",
-    "origem_equipe",
+    "equipe_avaliada",
     "auditados",
     "colaborador_1",
     "colaborador_2",
@@ -932,7 +923,7 @@ function obterColunasAnalitico(lista){
 }
 
 function baixarCSV(nomeArquivo, linhas){
-  const csv = "\\uFEFF" + linhas.join("\\n");
+  const csv = "\uFEFF" + linhas.join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
 
@@ -976,7 +967,7 @@ function exportarAnaliticoCSV(){
       f.mesIni || "sem_inicio",
       f.mesFim || "sem_fim",
       f.regional || "todas_regioes",
-      f.supervisor ? normName(f.supervisor).replace(/\\s+/g, "_") : "todos_supervisores",
+      f.supervisor ? normName(f.supervisor).replace(/\s+/g, "_") : "todos_supervisores",
       f.tipoEquipe || "todas_equipes"
     ].join("_") + ".csv";
 
@@ -1044,35 +1035,18 @@ async function atualizarDashboard(){
       document.getElementById("tituloGraficoEsquerda").innerHTML = `<i class="bi bi-graph-up"></i> Frequência semanal (mês)`;
       document.getElementById("hintGraficoEsquerda").textContent = `Inspeções de ${mesIni}`;
 
-      if (supervisor) {
-        const freq = await fetchFrequencia(mesIni, supervisor);
-        let weeks = Array.isArray(freq.weeks) ? freq.weeks : [0,0,0,0,0];
+      const n = weeksInMonth(mesIni);
+      const weeks = new Array(n).fill(0);
 
-        if (tipoEquipe) {
-          const n = weeksInMonth(mesIni);
-          weeks = new Array(n).fill(0);
-          for (const i of inspecoesPeriodoFiltradas) {
-            const iso = getISODateFromInspecao(i);
-            if (!iso || iso.slice(0,7) !== mesIni) continue;
-            const w = weekOfMonthFromISO(iso);
-            if (!w || w < 1 || w > n) continue;
-            weeks[w-1] += 1;
-          }
-        }
-
-        drawWeeks(document.getElementById("cvFrequencia"), weeks, mesIni);
-      } else {
-        const n = weeksInMonth(mesIni);
-        const weeks = new Array(n).fill(0);
-        for (const i of inspecoesPeriodoFiltradas) {
-          const iso = getISODateFromInspecao(i);
-          if (!iso) continue;
-          const w = weekOfMonthFromISO(iso);
-          if (!w || w < 1 || w > n) continue;
-          weeks[w-1] += 1;
-        }
-        drawWeeks(document.getElementById("cvFrequencia"), weeks, mesIni);
+      for (const i of inspecoesPeriodoFiltradas) {
+        const iso = getISODateFromInspecao(i);
+        if (!iso || iso.slice(0,7) !== mesIni) continue;
+        const w = weekOfMonthFromISO(iso);
+        if (!w || w < 1 || w > n) continue;
+        weeks[w-1] += 1;
       }
+
+      drawWeeks(document.getElementById("cvFrequencia"), weeks, mesIni);
     } else {
       document.getElementById("tituloGraficoEsquerda").innerHTML = `<i class="bi bi-graph-up"></i> Inspeções por mês (período)`;
       document.getElementById("hintGraficoEsquerda").textContent = `${mesIni} até ${mesFim}`;
@@ -1089,35 +1063,13 @@ async function atualizarDashboard(){
 
     const ranking = await fetchRankingColaboradores();
 
+    /* AJUSTE IMPORTANTE:
+       NÃO aplicar tipoEquipe no ranking,
+       para não mexer na métrica de abrangência */
     const rankingFiltrado = (ranking || []).filter(r=>{
       const liderR = String(r.lider || "").trim();
-
       if (regional && !isInRegionalByLiderNome(liderR, regional)) return false;
       if (supervisor && normName(liderR) !== normName(supervisor)) return false;
-
-      if (tipoEquipe) {
-        const tipoRBruto =
-          r.tipo_equipe ??
-          r.equipe_tipo ??
-          r.tipo ??
-          r.empresa_tipo ??
-          r.vinculo ??
-          r.origem_equipe ??
-          r.tipo_de_equipe ??
-          "";
-
-        const tipoR = normalizarTexto(tipoRBruto);
-
-        const tipoClassificado =
-          (tipoR.includes("PRESTADORA") || tipoR.includes("TERCEIR") || tipoR.includes("CONTRATADA"))
-            ? "PRESTADORA"
-            : ((tipoR.includes("ENERGISA") || tipoR.includes("PROPRIA") || tipoR.includes("PRÓPRIA"))
-                ? "ENERGISA"
-                : tipoR);
-
-        if (tipoClassificado !== tipoEquipe) return false;
-      }
-
       return true;
     });
 
