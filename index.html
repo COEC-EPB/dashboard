@@ -939,10 +939,13 @@ function baixarCSV(nomeArquivo, linhas){
 
 function exportarAnaliticoCSV(){
   try{
-    const lista = Array.isArray(dashboardState.inspecoesFiltradas) ? dashboardState.inspecoesFiltradas : [];
+    // baixa exatamente o que está filtrado no dashboard
+    const lista = Array.isArray(dashboardState.inspecoesFiltradas)
+      ? dashboardState.inspecoesFiltradas
+      : [];
 
     if (!lista.length){
-      setStatus("Não há dados filtrados para exportar o analítico.", "error");
+      setStatus("Não há registros na tela para exportar.", "error");
       return;
     }
 
@@ -963,7 +966,7 @@ function exportarAnaliticoCSV(){
 
     const f = dashboardState.filtros || {};
     const nome = [
-      "analitico_inspecoes",
+      "analitico_tela",
       f.mesIni || "sem_inicio",
       f.mesFim || "sem_fim",
       f.regional || "todas_regioes",
@@ -972,10 +975,10 @@ function exportarAnaliticoCSV(){
     ].join("_") + ".csv";
 
     baixarCSV(nome, linhas);
-    setStatus(`Analítico exportado com ${lista.length} registro(s).`, "success");
+    setStatus(`Download concluído: ${lista.length} registro(s) da tela.`, "success");
   } catch (e){
     console.error(e);
-    setStatus("Erro ao exportar o analítico.", "error");
+    setStatus("Erro ao exportar os registros da tela.", "error");
   }
 }
 
