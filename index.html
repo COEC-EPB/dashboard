@@ -806,22 +806,30 @@ function getISODateFromInspecao(i){
 }
 
 function getTipoEquipeInspecao(i){
-  const bruto = i.equipe_avaliada ?? "";
+  const bruto =
+    i["Equipe Avaliada"] ??
+    i["EQUIPE AVALIADA"] ??
+    "";
+
   const s = normalizarTexto(bruto);
 
-  if (!s) return "";
-  if (s.includes("PRESTADORA") || s.includes("TERCEIR") || s.includes("CONTRATADA")) return "PRESTADORA";
-  if (s.includes("ENERGISA") || s.includes("PROPRIA") || s.includes("PRÓPRIA")) return "ENERGISA";
+  if (s === "EQUIPE PRESTADORA") return "PRESTADORA";
+  if (s === "EQUIPE ENERGISA") return "ENERGISA";
+
   return "";
 }
 
 function getTipoEquipeRegistro(r){
-  const bruto = r.equipe_avaliada ?? "";
+  const bruto =
+    r["Equipe Avaliada"] ??
+    r["EQUIPE AVALIADA"] ??
+    "";
+
   const s = normalizarTexto(bruto);
 
-  if (!s) return "";
-  if (s.includes("PRESTADORA") || s.includes("TERCEIR") || s.includes("CONTRATADA")) return "PRESTADORA";
-  if (s.includes("ENERGISA") || s.includes("PROPRIA") || s.includes("PRÓPRIA")) return "ENERGISA";
+  if (s === "EQUIPE PRESTADORA") return "PRESTADORA";
+  if (s === "EQUIPE ENERGISA") return "ENERGISA";
+
   return "";
 }
 
