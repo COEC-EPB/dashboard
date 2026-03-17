@@ -125,7 +125,7 @@
       </a>
 
       <button class="secondary" id="btnDownloadAnalitico">
-        <i class="bi bi-download"></i> Download Analítico
+        <i class="bi bi-download"></i> Baixar Registros da Tela
       </button>
 
       <button class="secondary" id="btnAtualizar">
@@ -412,7 +412,7 @@ const REGIONAL_POR_LIDER = {
   "ADRIANO PAULO DA SILVA": "CENTRO",
   "IRIALLESON DA SILVA LIMA": "CENTRO",
   "JOSE MARIO DE ALEXANDRE SARAIVA": "CENTRO",
-  "ANTONIO CESAR PEREIRA ROCHA": "CENTRO"  
+  "ANTONIO CESAR PEREIRA ROCHA": "CENTRO"
 };
 
 function isInRegionalByLiderNome(liderNome, regional){
@@ -485,17 +485,6 @@ function nomeMes(mm){
 function labelMes(yyyyMM){
   const [y, m] = String(yyyyMM || "").split("-");
   return `${nomeMes(m)}/${String(y).slice(-2)}`;
-}
-
-async function fetchFrequencia(mes, gestor){
-  const qs = new URLSearchParams();
-  qs.set("mes", mes);
-  qs.set("gestor", gestor);
-
-  const res = await apiFetch(`/frequencia?${qs.toString()}`);
-  const text = await res.text();
-  if (!res.ok) throw new Error(text);
-  return JSON.parse(text);
 }
 
 async function fetchInspecoesRange(ini, fim, lider){
@@ -816,23 +805,23 @@ function getISODateFromInspecao(i){
   return s.slice(0,10);
 }
 
-/* AJUSTE CORRETO: usar equipe_avaliada */
 function getTipoEquipeInspecao(i){
-  const bruto =
-    i.equipe_avaliada ??
-    "";
-
+  const bruto = i.equipe_avaliada ?? "";
   const s = normalizarTexto(bruto);
+
   if (!s) return "";
+  if (s.includes("PRESTADORA") || s.includes("TERCEIR") || s.includes("CONTRATADA")) return "PRESTADORA";
+  if (s.includes("ENERGISA") || s.includes("PROPRIA") || s.includes("PRÓPRIA")) return "ENERGISA";
+  return "";
+}
 
-  if (s.includes("PRESTADORA") || s.includes("TERCEIR") || s.includes("CONTRATADA")) {
-    return "PRESTADORA";
-  }
+function getTipoEquipeRegistro(r){
+  const bruto = r.equipe_avaliada ?? "";
+  const s = normalizarTexto(bruto);
 
-  if (s.includes("ENERGISA") || s.includes("PROPRIA") || s.includes("PRÓPRIA")) {
-    return "ENERGISA";
-  }
-
+  if (!s) return "";
+  if (s.includes("PRESTADORA") || s.includes("TERCEIR") || s.includes("CONTRATADA")) return "PRESTADORA";
+  if (s.includes("ENERGISA") || s.includes("PROPRIA") || s.includes("PRÓPRIA")) return "ENERGISA";
   return "";
 }
 
@@ -940,7 +929,6 @@ function baixarCSV(nomeArquivo, linhas){
 
 function exportarAnaliticoCSV(){
   try{
-    // baixa exatamente o que está filtrado no dashboard
     const lista = Array.isArray(dashboardState.inspecoesFiltradas)
       ? dashboardState.inspecoesFiltradas
       : [];
@@ -1067,13 +1055,13 @@ async function atualizarDashboard(){
 
     const ranking = await fetchRankingColaboradores();
 
-    /* AJUSTE IMPORTANTE:
-       NÃO aplicar tipoEquipe no ranking,
-       para não mexer na métrica de abrangência */
     const rankingFiltrado = (ranking || []).filter(r=>{
       const liderR = String(r.lider || "").trim();
+
       if (regional && !isInRegionalByLiderNome(liderR, regional)) return false;
       if (supervisor && normName(liderR) !== normName(supervisor)) return false;
+      if (tipoEquipe && getTipoEquipeRegistro(r) !== tipoEquipe) return false;
+
       return true;
     });
 
