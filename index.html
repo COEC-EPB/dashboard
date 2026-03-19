@@ -1,975 +1,1609 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8" />
-    <title>Mapa de Serviços</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8" />
+  <title>Dashboard - Inspeções</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" crossorigin="" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
 
-    <style>
-        html, body {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-        }
+  <style>
+    :root{
+      --primary:#0097CE;
+      --primary-dark:#007fb0;
+      --bg:#f4f6f8;
+      --card:#fff;
+      --text:#333;
+      --border:#e0e0e0;
+      --danger:#b3261e;
+      --success:#137333;
+      --warning:#b26a00;
+    }
 
-        body {
-            font-family: Arial, sans-serif;
-            background: #f5f5f5;
-        }
+    *{box-sizing:border-box;}
 
-        #topo {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-            padding: 10px 12px;
-            background: #ffffff;
-            border-bottom: 1px solid #dcdcdc;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-            position: relative;
-            z-index: 1001;
-        }
+    body{
+      margin:0;
+      font-family:"Segoe UI",Arial,sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
 
-        #topo h2 {
-            margin: 0;
-            font-size: 18px;
-            color: #1f1f1f;
-        }
+    header{
+      background:var(--card);
+      padding:16px 24px;
+      display:flex;
+      align-items:center;
+      gap:12px;
+      flex-wrap:wrap;
+      box-shadow:0 2px 8px rgba(0,0,0,.08);
+      position:sticky;
+      top:0;
+      z-index:10;
+    }
 
-        #map {
-            height: calc(100vh - 62px);
-            width: 100%;
-        }
+    header h2{
+      margin:0;
+      color:var(--primary);
+      display:flex;
+      align-items:center;
+      gap:8px;
+      font-size:18px;
+    }
 
-        select, button, input[type="text"], input[type="file"] {
-            font-size: 15px;
-            padding: 8px 10px;
-            border: 1px solid #cfcfcf;
-            border-radius: 8px;
-            background: #fff;
-        }
+    .top-actions{
+      margin-left:auto;
+      display:flex;
+      gap:12px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
 
-        button {
-            cursor: pointer;
-            background: #1a73e8;
-            color: white;
-            border: none;
-            transition: 0.2s ease;
-        }
+    input,select{
+      padding:8px 10px;
+      border:1px solid var(--border);
+      border-radius:10px;
+      background:#fff;
+      font-size:14px;
+      outline:none;
+    }
 
-        button:hover {
-            background: #1666c1;
-        }
+    button,.btn-link{
+      padding:9px 14px;
+      border-radius:10px;
+      border:none;
+      cursor:pointer;
+      font-size:14px;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      white-space:nowrap;
+    }
 
-        .painel-flutuante {
-            position: fixed;
-            background: rgba(255,255,255,0.97);
-            backdrop-filter: blur(4px);
-            padding: 12px;
-            border-radius: 12px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.18);
-            font-size: 14px;
-            z-index: 1000;
-            min-width: 280px;
-            max-width: 430px;
-            max-height: 420px;
-            overflow-y: auto;
-            display: none;
-        }
+    button{
+      background:var(--primary);
+      color:#fff;
+    }
 
-        #painelFiltros {
-            top: 80px;
-            left: 70px;
-            min-width: 400px;
-            max-width: 460px;
-        }
+    button:hover{
+      background:var(--primary-dark);
+    }
 
-        #painelResumo {
-            top: 80px;
-            right: 20px;
-        }
+    button.secondary,.btn-link{
+      background:#fff;
+      color:#333;
+      border:1px solid var(--border);
+      text-decoration:none;
+    }
 
-        #painelSelecionados {
-            bottom: 80px;
-            right: 20px;
-        }
+    button.secondary:hover,.btn-link:hover{
+      background:#f3f3f3;
+    }
 
-        .acoes-topo-esquerda {
-            position: fixed;
-            left: 70px;
-            top: 80px;
-            z-index: 1100;
-        }
+    main{
+      padding:24px;
+    }
 
-        .acoes-flutuantes {
-            position: fixed;
-            right: 20px;
-            bottom: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            z-index: 1100;
-        }
+    .row{
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      align-items:end;
+      margin-bottom:14px;
+    }
 
-        .btn-flutuante {
-            background: #1a73e8;
-            color: white;
-            border: none;
-            border-radius: 999px;
-            padding: 10px 14px;
-            font-size: 14px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            cursor: pointer;
-        }
+    .status{
+      font-size:14px;
+      color:#555;
+      min-width:240px;
+      flex:1;
+    }
 
-        .btn-flutuante.ativo {
-            background: #0f4fb8;
-        }
+    .status.success{ color:var(--success); }
+    .status.error{ color:var(--danger); }
 
-        #searchBairro, #searchCodserv {
-            width: 100%;
-            box-sizing: border-box;
-            margin-bottom: 8px;
-        }
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap:12px;
+      align-items:stretch;
+    }
 
-        #select-bairro, #select-regional, #select-codserv {
-            width: 100%;
-            box-sizing: border-box;
-        }
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:14px;
+      box-shadow:0 4px 12px rgba(0,0,0,.06);
+      overflow:hidden;
+    }
 
-        #select-bairro, #select-codserv {
-            margin-top: 8px;
-        }
+    .pad{
+      padding:14px;
+    }
 
-        .dica {
-            font-size: 12px;
-            color: #666;
-            margin-top: 6px;
-        }
+    .kpi{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      min-height:96px;
+    }
 
-        .painel-acoes {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-top: 10px;
-        }
+    .kpi .label{
+      font-size:12px;
+      color:#666;
+      font-weight:700;
+    }
 
-        .legenda-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 6px;
-        }
+    .kpi .value{
+      font-size:28px;
+      font-weight:900;
+      line-height:1;
+    }
 
-        .legenda-cor {
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            border: 1px solid rgba(0,0,0,0.3);
-            flex-shrink: 0;
-        }
+    .kpi .sub{
+      font-size:12px;
+      color:#777;
+    }
 
-        .info-item {
-            padding: 5px 0;
-            border-bottom: 1px solid #eee;
-        }
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:#fff;
+      font-size:13px;
+      color:#444;
+      font-weight:700;
+    }
 
-        .numero-label {
-            pointer-events: none;
-        }
+    .divider{
+      height:1px;
+      background:var(--border);
+      margin:12px 0;
+    }
 
-        .leaflet-popup-content {
-            font-size: 14px;
-            line-height: 1.45;
-        }
+    canvas{
+      width:100%;
+      height:320px;
+      display:block;
+    }
 
-        .leaflet-interactive {
-            cursor: pointer;
-        }
+    .chart-title{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+    }
 
-        .bloco-filtro {
-            margin-bottom: 12px;
-        }
+    .chart-title h3{
+      margin:0;
+      color:var(--primary);
+      font-size:16px;
+    }
 
-        @media (max-width: 768px) {
-            #map {
-                height: calc(100vh - 62px);
-            }
+    .hint{
+      font-size:12px;
+      color:#777;
+    }
 
-            .painel-flutuante {
-                left: 10px !important;
-                right: 10px !important;
-                min-width: auto;
-                max-width: none;
-            }
+    .canvas-tip{
+      position: fixed;
+      display: none;
+      pointer-events: none;
+      z-index: 99999;
+      background: #111;
+      color: #fff;
+      padding: 8px 10px;
+      border-radius: 10px;
+      font-size: 12px;
+      line-height: 1.2;
+      white-space: nowrap;
+      box-shadow: 0 10px 26px rgba(0,0,0,.25);
+      transform: translate(10px, 10px);
+    }
 
-            .acoes-topo-esquerda {
-                left: 55px;
-                right: 10px;
-                top: 72px;
-            }
+    .canvas-tip b{ font-weight: 900; }
+    .canvas-tip .muted{ opacity: .85; font-weight: 600; }
 
-            .acoes-flutuantes {
-                left: 10px;
-                right: 10px;
-                bottom: 10px;
-            }
+    .meta-ok{ color:var(--success); font-weight:800; }
+    .meta-alerta{ color:var(--warning); font-weight:800; }
+    .meta-ruim{ color:var(--danger); font-weight:800; }
 
-            .btn-flutuante {
-                width: 100%;
-            }
-        }
-    </style>
+    .metas-cards{
+      display:grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap:12px;
+      margin-top:14px;
+    }
+
+    .meta-card{
+      border:1px solid var(--border);
+      border-radius:14px;
+      background:#fff;
+      padding:14px;
+      box-shadow:0 4px 12px rgba(0,0,0,.05);
+    }
+
+    .meta-card-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:10px;
+      margin-bottom:10px;
+      flex-wrap:wrap;
+    }
+
+    .meta-card-title{
+      font-size:15px;
+      font-weight:800;
+      color:#1f2937;
+      margin:0;
+    }
+
+    .meta-card-sub{
+      font-size:12px;
+      color:#6b7280;
+      margin-top:4px;
+    }
+
+    .meta-badge{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:#fff;
+      font-size:12px;
+      font-weight:700;
+      white-space:nowrap;
+    }
+
+    .meta-main-grid{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap:10px;
+      margin-top:10px;
+    }
+
+    .meta-box{
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:10px;
+      background:#fafafa;
+    }
+
+    .meta-box-label{
+      font-size:11px;
+      font-weight:700;
+      color:#666;
+      margin-bottom:6px;
+      text-transform:uppercase;
+      letter-spacing:.2px;
+    }
+
+    .meta-box-value{
+      font-size:22px;
+      font-weight:900;
+      color:#111827;
+      line-height:1.1;
+    }
+
+    .meta-box-small{
+      font-size:12px;
+      color:#6b7280;
+      margin-top:4px;
+    }
+
+    .meta-months{
+      display:grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap:8px;
+      margin-top:12px;
+    }
+
+    .meta-month{
+      border:1px solid var(--border);
+      border-radius:10px;
+      padding:8px;
+      text-align:center;
+      background:#fff;
+    }
+
+    .meta-month-name{
+      font-size:11px;
+      color:#6b7280;
+      font-weight:700;
+      margin-bottom:4px;
+    }
+
+    .meta-month-value{
+      font-size:14px;
+      font-weight:800;
+      color:#1f2937;
+    }
+
+    .metas-empty{
+      padding:18px;
+      border:1px dashed var(--border);
+      border-radius:12px;
+      background:#fff;
+      color:#666;
+      font-size:14px;
+      text-align:center;
+      margin-top:14px;
+    }
+
+    @media (max-width: 900px){
+      .grid > .card{ grid-column: span 12 !important; }
+      .meta-main-grid{ grid-template-columns: 1fr; }
+      .meta-months{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+  </style>
 </head>
+
 <body>
+  <header>
+    <h2><i class="bi bi-speedometer2"></i> Dashboard - Inspeções</h2>
 
-    <div id="topo">
-        <h2>Mapa de Serviços por Bairro</h2>
-        <input type="file" id="input-excel" accept=".xlsx" />
+    <div class="top-actions">
+      <a class="btn-link" href="https://coec-epb.github.io/geral_colaboradores/" title="Voltar para Inspeções">
+        <i class="bi bi-arrow-left"></i> Inspeções
+      </a>
+
+      <button class="secondary" id="btnDownloadAnalitico">
+        <i class="bi bi-download"></i> Baixar Registros da Tela
+      </button>
+
+      <button class="secondary" id="btnAtualizar">
+        <i class="bi bi-arrow-repeat"></i> Atualizar
+      </button>
+
+      <button class="secondary" onclick="logout()">
+        <i class="bi bi-box-arrow-right"></i> Sair
+      </button>
     </div>
+  </header>
 
-    <div id="map"></div>
-
-    <div class="acoes-topo-esquerda">
-        <button id="btn-toggle-filtros" class="btn-flutuante">Filtros</button>
-    </div>
-
-    <div class="painel-flutuante" id="painelFiltros">
-        <h3 style="margin:0 0 8px 0;">Filtros</h3>
-
-        <div class="bloco-filtro">
-            <label for="select-regional"><strong>Regional</strong></label>
-            <select id="select-regional">
-                <option value="">Todas</option>
-                <option value="1">LESTE</option>
-                <option value="2">CENTRO</option>
-                <option value="3">OESTE</option>
-            </select>
+  <main>
+    <div class="card pad">
+      <div class="row">
+        <div>
+          <div class="hint" style="font-weight:700;margin-bottom:6px;">Mês inicial</div>
+          <input id="filtroMesIni" type="month" style="width:180px;">
         </div>
 
-        <div class="bloco-filtro">
-            <label for="searchCodserv"><strong>Pesquisar codserv</strong></label>
-            <input type="text" id="searchCodserv" placeholder="Digite para filtrar códigos..." />
-
-            <label for="select-codserv"><strong>Códigos de serviço</strong></label>
-            <select id="select-codserv" size="6" multiple></select>
-            <div class="dica">Segure Ctrl para selecionar vários códigos</div>
-
-            <div class="painel-acoes">
-                <button type="button" id="btn-todos-codserv">Selecionar todos os codserv</button>
-                <button type="button" id="btn-limpar-codserv">Limpar codserv</button>
-            </div>
+        <div>
+          <div class="hint" style="font-weight:700;margin-bottom:6px;">Mês final</div>
+          <input id="filtroMesFim" type="month" style="width:180px;">
         </div>
 
-        <div class="bloco-filtro">
-            <label for="searchBairro"><strong>Pesquisar bairro</strong></label>
-            <input type="text" id="searchBairro" placeholder="Digite para filtrar bairros..." />
-
-            <label for="select-bairro"><strong>Bairros</strong></label>
-            <select id="select-bairro" size="8" multiple></select>
-            <div class="dica">Segure Ctrl para selecionar vários bairros</div>
-
-            <div class="painel-acoes">
-                <button type="button" id="btn-todos-bairros">Selecionar todos os bairros</button>
-                <button type="button" id="btn-limpar-bairros">Limpar bairros</button>
-            </div>
+        <div>
+          <div class="hint" style="font-weight:700;margin-bottom:6px;">Regional</div>
+          <select id="filtroRegional" style="min-width:180px;">
+            <option value="">Todas</option>
+            <option value="CENTRO">CENTRO</option>
+            <option value="LESTE">LESTE</option>
+            <option value="OESTE">OESTE</option>
+          </select>
         </div>
 
-        <div class="painel-acoes">
-            <button id="btn-limpar">Limpar tudo</button>
+        <div>
+          <div class="hint" style="font-weight:700;margin-bottom:6px;">Tipo de equipe</div>
+          <select id="filtroTipoEquipe" style="min-width:180px;">
+            <option value="">Todas</option>
+            <option value="ENERGISA">Energisa</option>
+            <option value="PRESTADORA">Prestadora</option>
+          </select>
         </div>
+
+        <div style="flex:1;min-width:260px;">
+          <div class="hint" style="font-weight:700;margin-bottom:6px;">Supervisor (Líder)</div>
+          <select id="filtroSupervisor" style="width:100%;">
+            <option value="">Todos</option>
+          </select>
+        </div>
+
+        <div id="status" class="status"></div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <span class="pill"><i class="bi bi-info-circle"></i> Indicadores de inspeções e NC</span>
+        <span class="pill"><i class="bi bi-people"></i> Abrangência da equipe</span>
+        <span class="pill"><i class="bi bi-bullseye"></i> Meta por supervisor</span>
+      </div>
     </div>
 
-    <div class="painel-flutuante" id="painelResumo"></div>
-    <div class="painel-flutuante" id="painelSelecionados"></div>
+    <div class="grid" style="margin-top:12px;">
+      <div class="card pad" style="grid-column: span 4;">
+        <div class="kpi">
+          <div class="label">Qtd. Inspeções (período)</div>
+          <div class="value" id="kpiInspecoes">0</div>
+          <div class="sub" id="kpiInspecoesSub">—</div>
+        </div>
+      </div>
 
-    <div class="acoes-flutuantes">
-        <button id="btn-toggle-resumo" class="btn-flutuante">Serviços por bairro</button>
-        <button id="btn-toggle-selecionados" class="btn-flutuante">Bairros selecionados</button>
-        <button id="btn-selecao-poligono" class="btn-flutuante">Desenhar seleção</button>
-        <button id="btn-limpar-selecao-mapa" class="btn-flutuante">Limpar seleção do mapa</button>
-        <button id="btn-copiar-numos" class="btn-flutuante">Copiar OS</button>
+      <div class="card pad" style="grid-column: span 4;">
+        <div class="kpi">
+          <div class="label">Qtd. Não Conformidades (período)</div>
+          <div class="value" id="kpiNC">0</div>
+          <div class="sub" id="kpiNCSub">—</div>
+        </div>
+      </div>
+
+      <div class="card pad" style="grid-column: span 4;">
+        <div class="kpi">
+          <div class="label">Abrangência</div>
+          <div class="value" id="kpiAbrangencia">0%</div>
+          <div class="sub" id="kpiAbrangenciaSub">0 inspecionados / 0 total</div>
+          <div class="sub" id="kpiAbrangenciaPrazo">—</div>
+        </div>
+      </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js" crossorigin=""></script>
-    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-
-    <script>
-        const input = document.getElementById('input-excel');
-        const selectRegional = document.getElementById('select-regional');
-        const searchBairro = document.getElementById('searchBairro');
-        const searchCodserv = document.getElementById('searchCodserv');
-        const selectBairro = document.getElementById('select-bairro');
-        const selectCodserv = document.getElementById('select-codserv');
-
-        const btnLimpar = document.getElementById('btn-limpar');
-        const btnTodosCodserv = document.getElementById('btn-todos-codserv');
-        const btnLimparCodserv = document.getElementById('btn-limpar-codserv');
-        const btnTodosBairros = document.getElementById('btn-todos-bairros');
-        const btnLimparBairros = document.getElementById('btn-limpar-bairros');
-
-        const btnToggleFiltros = document.getElementById('btn-toggle-filtros');
-        const btnToggleResumo = document.getElementById('btn-toggle-resumo');
-        const btnToggleSelecionados = document.getElementById('btn-toggle-selecionados');
-
-        const painelFiltros = document.getElementById('painelFiltros');
-        const painelResumo = document.getElementById('painelResumo');
-        const painelSelecionados = document.getElementById('painelSelecionados');
-
-        const btnSelecaoPoligono = document.getElementById('btn-selecao-poligono');
-        const btnLimparSelecaoMapa = document.getElementById('btn-limpar-selecao-mapa');
-        const btnCopiarNumos = document.getElementById('btn-copiar-numos');
-
-        let map, layersGroup;
-        let dadosOriginais = [];
-        let dadosFiltradosRegional = [];
-        let dadosFiltradosCodserv = [];
-        let mapaCoresBairros = {};
-        let renderedPoints = [];
-        let numosSelecionados = new Set();
-        let drawControl;
-        let drawnItems;
-
-        const regionalMap = {
-            '1': 'LESTE',
-            '2': 'CENTRO',
-            '3': 'OESTE'
-        };
-
-        const paletaCores = [
-            '#1a73e8', '#ea4335', '#34a853', '#fbbc04', '#8e24aa',
-            '#00acc1', '#fb8c00', '#5e35b1', '#43a047', '#e53935',
-            '#3949ab', '#00897b', '#6d4c41', '#7cb342', '#d81b60',
-            '#039be5', '#c2185b', '#f4511e', '#009688', '#3f51b5',
-            '#ff7043', '#2e7d32', '#6a1b9a', '#00695c', '#ad1457',
-            '#283593', '#4e342e', '#455a64', '#c62828', '#1565c0'
-        ];
-
-        function initMap(lat = -7.12, lon = -36.5, zoom = 8) {
-            if (map) map.remove();
-
-            map = L.map('map', {
-                zoomControl: true
-            }).setView([lat, lon], zoom);
-
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                subdomains: 'abcd',
-                maxZoom: 20,
-                attribution: '&copy; OpenStreetMap &copy; CARTO'
-            }).addTo(map);
-
-            layersGroup = L.layerGroup().addTo(map);
-
-            drawnItems = new L.FeatureGroup();
-            map.addLayer(drawnItems);
-
-            drawControl = new L.Control.Draw({
-                draw: {
-                    polyline: false,
-                    rectangle: false,
-                    circle: false,
-                    marker: false,
-                    circlemarker: false,
-                    polygon: {
-                        allowIntersection: false,
-                        showArea: true,
-                        shapeOptions: {
-                            color: '#1a73e8',
-                            weight: 2
-                        }
-                    }
-                },
-                edit: {
-                    featureGroup: drawnItems,
-                    edit: false,
-                    remove: true
-                }
-            });
-
-            map.on(L.Draw.Event.CREATED, function (e) {
-                drawnItems.clearLayers();
-                const layer = e.layer;
-                drawnItems.addLayer(layer);
-
-                if (e.layerType === 'polygon') {
-                    selecionarPontosPorPoligono(layer.getLatLngs()[0]);
-                }
-            });
-
-            map.on(L.Draw.Event.DELETED, function () {
-                limparSelecaoMapa();
-            });
-        }
-
-        function togglePainel(painel, botao) {
-            const aberto = painel.style.display === 'block';
-            painel.style.display = aberto ? 'none' : 'block';
-            if (botao) botao.classList.toggle('ativo', !aberto);
-        }
-
-        function fecharPainel(painel, botao) {
-            painel.style.display = 'none';
-            if (botao) botao.classList.remove('ativo');
-        }
-
-        function formatarRegional(codreg) {
-            return regionalMap[String(codreg)] || String(codreg || '-');
-        }
-
-        function formatarValor(v) {
-            if (v === null || v === undefined || v === '') return '-';
-            return String(v);
-        }
-
-        function normalizarTexto(v) {
-            return String(v || '').trim();
-        }
-
-        function parseCoord(valor) {
-            if (valor === null || valor === undefined || valor === '') return NaN;
-            return parseFloat(String(valor).replace(',', '.').trim());
-        }
-
-        function gerarMapaCoresBairros(dadosBase) {
-            const bairros = [...new Set(dadosBase.map(r => r.bairro).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
-            mapaCoresBairros = {};
-            bairros.forEach((bairro, index) => {
-                mapaCoresBairros[bairro] = paletaCores[index % paletaCores.length];
-            });
-        }
-
-        function getCorBairro(bairro) {
-            return mapaCoresBairros[bairro] || '#1a73e8';
-        }
-
-        function criarPopupContent(ponto) {
-            return `
-                <b>NUMERO DA OS:</b> ${formatarValor(ponto.numos)}<br>
-                <b>CODIGO DO SERVIÇO:</b> ${formatarValor(ponto.codserv)}<br>
-                <b>CDC:</b> ${formatarValor(ponto.num_cdc)}<br>
-                <b>Transformador:</b> ${formatarValor(ponto.num_transformador)}<br>
-                <b>EQUIPE:</b> ${formatarValor(ponto.eqp)}<br>
-                <b>Tipo de serviço:</b> ${formatarValor(ponto.tipserv)}<br>
-                <b>Bairro:</b> ${formatarValor(ponto.bairro)}<br>
-                <b>Regional:</b> ${formatarRegional(ponto.codreg)}
-            `;
-        }
-
-        function criarMarcadorNumero(lat, lon, idx, cor) {
-            return L.marker([lat, lon], {
-                icon: L.divIcon({
-                    className: 'numero-label',
-                    iconSize: [28, 28],
-                    iconAnchor: [14, 14],
-                    html: `<div style="
-                        width: 28px;
-                        height: 28px;
-                        line-height: 28px;
-                        text-align: center;
-                        border-radius: 50%;
-                        background: ${cor};
-                        color: #fff;
-                        font-size: 11px;
-                        font-weight: bold;
-                        border: 2px solid white;
-                        box-shadow: 0 1px 5px rgba(0,0,0,0.35);
-                        opacity: 0.95;">
-                        ${idx + 1}
-                    </div>`
-                }),
-                interactive: false,
-                keyboard: false,
-                zIndexOffset: 500
-            });
-        }
-
-        function atualizarPainelResumo() {
-            const contagem = {};
-            dadosFiltradosCodserv.forEach(r => {
-                if (!contagem[r.bairro]) contagem[r.bairro] = 0;
-                contagem[r.bairro]++;
-            });
-
-            const lista = Object.entries(contagem).sort((a, b) => b[1] - a[1]);
-
-            painelResumo.innerHTML = `
-                <h3 style="margin:0 0 8px 0;">Serviços por bairro</h3>
-                ${lista.map(([bairro, qtd]) => `
-                    <div class="info-item">
-                        <span class="legenda-cor" style="background:${getCorBairro(bairro)}; margin-right:8px;"></span>
-                        <strong>${bairro}</strong>: ${qtd}
-                    </div>
-                `).join('')}
-            `;
-        }
-
-        function getCodservSelecionados() {
-            return Array.from(selectCodserv.selectedOptions).map(opt => opt.value);
-        }
-
-        function getBairrosSelecionados() {
-            return Array.from(selectBairro.selectedOptions).map(opt => opt.value);
-        }
-
-        function atualizarListaCodservs() {
-            const filtroRegional = selectRegional.value;
-
-            dadosFiltradosRegional = dadosOriginais.filter(r => {
-                if (!filtroRegional) return true;
-                return String(r.codreg) === filtroRegional;
-            });
-
-            const mapa = {};
-
-            dadosFiltradosRegional.forEach(r => {
-                const cod = normalizarTexto(r.codserv);
-                if (!cod) return;
-
-                if (!mapa[cod]) {
-                    mapa[cod] = {
-                        descricao: r.dscsvc || '',
-                        qtd: 0
-                    };
-                }
-
-                mapa[cod].qtd++;
-            });
-
-            const codservs = Object.keys(mapa).sort((a, b) =>
-                a.localeCompare(b, 'pt-BR', { numeric: true })
-            );
-
-            selectCodserv.innerHTML = '';
-
-            codservs.forEach(cod => {
-                const opt = document.createElement('option');
-                const desc = mapa[cod].descricao || 'Sem descrição';
-
-                opt.value = cod;
-                opt.textContent = `${cod} - ${desc} (${mapa[cod].qtd})`;
-
-                selectCodserv.appendChild(opt);
-            });
-        }
-
-        function atualizarListaBairros() {
-            const codservSelecionados = getCodservSelecionados();
-
-            dadosFiltradosCodserv = dadosFiltradosRegional.filter(r => {
-                if (!codservSelecionados.length) return true;
-                return codservSelecionados.includes(normalizarTexto(r.codserv));
-            });
-
-            gerarMapaCoresBairros(dadosFiltradosCodserv);
-
-            const contagem = {};
-            dadosFiltradosCodserv.forEach(r => {
-                if (!contagem[r.bairro]) contagem[r.bairro] = 0;
-                contagem[r.bairro]++;
-            });
-
-            const bairros = Object.keys(contagem).sort((a, b) => a.localeCompare(b, 'pt-BR'));
-
-            selectBairro.innerHTML = '';
-            bairros.forEach(bairro => {
-                const opt = document.createElement('option');
-                opt.value = bairro;
-                opt.textContent = `${bairro} (${contagem[bairro]})`;
-                selectBairro.appendChild(opt);
-            });
-
-            atualizarPainelResumo();
-        }
-
-        function renderPainelSelecionados(bairrosSelecionados) {
-            if (!bairrosSelecionados || bairrosSelecionados.length === 0) {
-                painelSelecionados.innerHTML = '';
-                return;
-            }
-
-            const contagem = {};
-            bairrosSelecionados.forEach(bairro => {
-                contagem[bairro] = dadosFiltradosCodserv.filter(r => r.bairro === bairro).length;
-            });
-
-            painelSelecionados.innerHTML = `
-                <h3 style="margin:0 0 10px 0;">Bairros selecionados</h3>
-                ${bairrosSelecionados.map(bairro => `
-                    <div class="legenda-item">
-                        <span class="legenda-cor" style="background:${getCorBairro(bairro)};"></span>
-                        <span><strong>${bairro}</strong> — ${contagem[bairro] || 0} serviços</span>
-                    </div>
-                `).join('')}
-            `;
-        }
-
-        function toggleSelecionadoVisual(item, selecionado) {
-            item.selected = selecionado;
-            if (selecionado) {
-                item.marker.setStyle({
-                    radius: 17,
-                    color: '#ffd54f',
-                    weight: 5,
-                    fillOpacity: 1
-                });
-            } else {
-                item.marker.setStyle({
-                    radius: 14,
-                    color: '#ffffff',
-                    weight: 3,
-                    fillOpacity: 0.95
-                });
-            }
-        }
-
-        function limparSelecaoMapa() {
-            numosSelecionados.clear();
-            renderedPoints.forEach(item => toggleSelecionadoVisual(item, false));
-        }
-
-        function pointInPolygon(point, polygon) {
-            const x = point.lng;
-            const y = point.lat;
-            let inside = false;
-
-            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-                const xi = polygon[i].lng, yi = polygon[i].lat;
-                const xj = polygon[j].lng, yj = polygon[j].lat;
-
-                const intersect = ((yi > y) !== (yj > y)) &&
-                    (x < (xj - xi) * (y - yi) / ((yj - yi) || 1e-12) + xi);
-
-                if (intersect) inside = !inside;
-            }
-
-            return inside;
-        }
-
-        function selecionarPontosPorPoligono(latlngsPoligono) {
-            limparSelecaoMapa();
-
-            renderedPoints.forEach(item => {
-                const latlng = item.marker.getLatLng();
-                if (pointInPolygon(latlng, latlngsPoligono)) {
-                    toggleSelecionadoVisual(item, true);
-                    if (item.data.numos !== null && item.data.numos !== undefined && item.data.numos !== '') {
-                        numosSelecionados.add(String(item.data.numos));
-                    }
-                }
-            });
-
-            if (numosSelecionados.size === 0) {
-                alert('Nenhuma bolinha foi selecionada na área desenhada.');
-            } else {
-                alert(`${numosSelecionados.size} OS(s) selecionada(s) no mapa.`);
-            }
-        }
-
-        function desenharMapa(bairrosSelecionados) {
-            layersGroup.clearLayers();
-            renderedPoints = [];
-            drawnItems.clearLayers();
-            limparSelecaoMapa();
-            fecharPainel(painelSelecionados, btnToggleSelecionados);
-
-            if (!bairrosSelecionados || bairrosSelecionados.length === 0) {
-                painelSelecionados.innerHTML = '';
-                return;
-            }
-
-            const dadosPlot = dadosFiltradosCodserv.filter(r => bairrosSelecionados.includes(r.bairro));
-            renderPainelSelecionados(bairrosSelecionados);
-
-            let todosLatLngs = [];
-
-            bairrosSelecionados.forEach(bairro => {
-                const dadosBairro = dadosPlot
-                    .filter(r => r.bairro === bairro)
-                    .sort((a, b) => {
-                        const aNum = Number(a.numos);
-                        const bNum = Number(b.numos);
-                        if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
-                        return String(a.numos).localeCompare(String(b.numos), 'pt-BR', { numeric: true });
-                    });
-
-                const cor = getCorBairro(bairro);
-
-                dadosBairro.forEach((ponto, idx) => {
-                    const marker = L.circleMarker([ponto.lat, ponto.lon], {
-                        radius: 14,
-                        fillColor: cor,
-                        color: '#ffffff',
-                        weight: 3,
-                        opacity: 1,
-                        fillOpacity: 0.95,
-                        bubblingMouseEvents: false
-                    });
-
-                    marker.bindPopup(criarPopupContent(ponto), {
-                        maxWidth: 340,
-                        autoPan: true
-                    });
-
-                    marker.on('mouseover', function () {
-                        const item = renderedPoints.find(x => x.marker === this);
-                        if (!item?.selected) {
-                            this.setStyle({ radius: 16, weight: 4, fillOpacity: 1 });
-                        }
-                        this.bringToFront();
-                    });
-
-                    marker.on('mouseout', function () {
-                        const item = renderedPoints.find(x => x.marker === this);
-                        if (!item?.selected && !(this.isPopupOpen && this.isPopupOpen())) {
-                            this.setStyle({ radius: 14, weight: 3, fillOpacity: 0.95, color: '#ffffff' });
-                        }
-                    });
-
-                    marker.on('click', function () {
-                        this.bringToFront();
-                    });
-
-                    marker.addTo(layersGroup);
-                    criarMarcadorNumero(ponto.lat, ponto.lon, idx, cor).addTo(layersGroup);
-
-                    renderedPoints.push({
-                        marker,
-                        data: ponto,
-                        selected: false
-                    });
-
-                    todosLatLngs.push([ponto.lat, ponto.lon]);
-                });
-            });
-
-            if (todosLatLngs.length > 0) {
-                const bounds = L.latLngBounds(todosLatLngs);
-                map.fitBounds(bounds, { padding: [40, 40] });
-            }
-        }
-
-        function selecionarTodosVisiveis(selectElement) {
-            Array.from(selectElement.options).forEach(opt => {
-                if (opt.style.display !== 'none') {
-                    opt.selected = true;
-                }
-            });
-        }
-
-        function limparTodos(selectElement) {
-            Array.from(selectElement.options).forEach(opt => {
-                opt.selected = false;
-            });
-        }
-
-        btnToggleFiltros.addEventListener('click', () => {
-            togglePainel(painelFiltros, btnToggleFiltros);
-        });
-
-        btnToggleResumo.addEventListener('click', () => {
-            if (!painelResumo.innerHTML.trim()) return;
-            togglePainel(painelResumo, btnToggleResumo);
-        });
-
-        btnToggleSelecionados.addEventListener('click', () => {
-            if (!painelSelecionados.innerHTML.trim()) return;
-            togglePainel(painelSelecionados, btnToggleSelecionados);
-        });
-
-        btnSelecaoPoligono.addEventListener('click', () => {
-            new L.Draw.Polygon(map, drawControl.options.draw.polygon).enable();
-        });
-
-        btnLimparSelecaoMapa.addEventListener('click', () => {
-            drawnItems.clearLayers();
-            limparSelecaoMapa();
-        });
-
-        btnCopiarNumos.addEventListener('click', async () => {
-            const lista = Array.from(numosSelecionados);
-
-            if (lista.length === 0) {
-                alert('Nenhuma OS foi selecionada no mapa.');
-                return;
-            }
-
-            const texto = lista.map(os => `"${os}"`).join(',');
-
-            try {
-                await navigator.clipboard.writeText(texto);
-                alert(`${lista.length} OS copiada(s) para a área de transferência.`);
-            } catch (e) {
-                prompt('Copie manualmente as OS abaixo:', texto);
-            }
-        });
-
-        btnTodosCodserv.addEventListener('click', () => {
-            selecionarTodosVisiveis(selectCodserv);
-            atualizarListaBairros();
-            desenharMapa(getBairrosSelecionados());
-        });
-
-        btnLimparCodserv.addEventListener('click', () => {
-            limparTodos(selectCodserv);
-            atualizarListaBairros();
-            desenharMapa(getBairrosSelecionados());
-        });
-
-        btnTodosBairros.addEventListener('click', () => {
-            selecionarTodosVisiveis(selectBairro);
-            desenharMapa(getBairrosSelecionados());
-        });
-
-        btnLimparBairros.addEventListener('click', () => {
-            limparTodos(selectBairro);
-            desenharMapa(getBairrosSelecionados());
-        });
-
-        selectRegional.addEventListener('change', () => {
-            const codservAntes = new Set(getCodservSelecionados());
-            const bairrosAntes = new Set(getBairrosSelecionados());
-
-            atualizarListaCodservs();
-
-            Array.from(selectCodserv.options).forEach(opt => {
-                if (codservAntes.has(opt.value)) opt.selected = true;
-            });
-
-            atualizarListaBairros();
-
-            Array.from(selectBairro.options).forEach(opt => {
-                if (bairrosAntes.has(opt.value)) opt.selected = true;
-            });
-
-            desenharMapa(getBairrosSelecionados());
-        });
-
-        selectCodserv.addEventListener('change', () => {
-            const bairrosAntes = new Set(getBairrosSelecionados());
-
-            atualizarListaBairros();
-
-            Array.from(selectBairro.options).forEach(opt => {
-                if (bairrosAntes.has(opt.value)) opt.selected = true;
-            });
-
-            desenharMapa(getBairrosSelecionados());
-        });
-
-        searchCodserv.addEventListener('input', () => {
-            const filtro = searchCodserv.value.toLowerCase();
-            for (const option of selectCodserv.options) {
-                option.style.display = option.text.toLowerCase().includes(filtro) ? 'block' : 'none';
-            }
-        });
-
-        searchBairro.addEventListener('input', () => {
-            const filtro = searchBairro.value.toLowerCase();
-            for (const option of selectBairro.options) {
-                option.style.display = option.text.toLowerCase().includes(filtro) ? 'block' : 'none';
-            }
-        });
-
-        selectBairro.addEventListener('change', () => {
-            desenharMapa(getBairrosSelecionados());
-        });
-
-        btnLimpar.addEventListener('click', () => {
-            selectRegional.value = '';
-            searchCodserv.value = '';
-            searchBairro.value = '';
-
-            Array.from(selectCodserv.options).forEach(opt => {
-                opt.selected = false;
-                opt.style.display = 'block';
-            });
-
-            atualizarListaCodservs();
-            atualizarListaBairros();
-
-            Array.from(selectBairro.options).forEach(opt => {
-                opt.selected = false;
-                opt.style.display = 'block';
-            });
-
-            layersGroup.clearLayers();
-            renderedPoints = [];
-            drawnItems.clearLayers();
-            limparSelecaoMapa();
-            painelSelecionados.innerHTML = '';
-            fecharPainel(painelSelecionados, btnToggleSelecionados);
-
-            if (dadosOriginais.length > 0) {
-                const coords = dadosOriginais.map(r => [r.lat, r.lon]);
-                map.fitBounds(L.latLngBounds(coords), { padding: [40, 40] });
-            }
-        });
-
-        input.addEventListener('change', e => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-
-            reader.onload = evt => {
-                const data = new Uint8Array(evt.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
-                const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
-
-                dadosOriginais = jsonData
-                    .map(r => ({
-                        codreg: normalizarTexto(r['codreg']),
-                        bairro: normalizarTexto(r['bairro'] || r['BAIRRO']),
-                        lat: parseCoord(r['LAT']),
-                        lon: parseCoord(r['LONG']),
-                        numos: r['numos'],
-                        codserv: normalizarTexto(r['codserv']),
-                        dscsvc: normalizarTexto(r['dscsvc']),
-                        num_cdc: r['num_cdc'],
-                        num_transformador: r['num_transformador'],
-                        eqp: r['eqp'],
-                        tipserv: r['tipserv']
-                    }))
-                    .filter(r =>
-                        r.bairro !== '' &&
-                        !isNaN(r.lat) &&
-                        !isNaN(r.lon)
-                    );
-
-                if (dadosOriginais.length === 0) {
-                    alert('Nenhum dado válido com LAT/LONG foi encontrado no arquivo.');
-                    return;
-                }
-
-                selectRegional.value = '';
-                searchCodserv.value = '';
-                searchBairro.value = '';
-                painelSelecionados.innerHTML = '';
-                fecharPainel(painelSelecionados, btnToggleSelecionados);
-                fecharPainel(painelResumo, btnToggleResumo);
-
-                atualizarListaCodservs();
-                atualizarListaBairros();
-
-                layersGroup.clearLayers();
-                renderedPoints = [];
-                drawnItems.clearLayers();
-                limparSelecaoMapa();
-
-                const coords = dadosOriginais.map(r => [r.lat, r.lon]);
-                map.fitBounds(L.latLngBounds(coords), { padding: [40, 40] });
-            };
-
-            reader.readAsArrayBuffer(file);
-        });
-
-        initMap();
-    </script>
+    <div class="card pad" style="margin-top:12px;">
+      <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:end;">
+        <div>
+          <h3 style="margin:0;color:var(--primary);font-size:16px;display:flex;align-items:center;gap:8px;">
+            <i class="bi bi-bullseye"></i> Metas dos Supervisores
+          </h3>
+          <div class="hint" style="margin-top:4px;">
+            Se selecionar um supervisor, mostra só ele. Se não selecionar, mostra o consolidado geral do filtro.
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <span class="pill" id="metaResumoPeriodo">Meta até: —</span>
+          <button type="button" class="secondary" id="btnAtualizarMetasDashboard">
+            <i class="bi bi-arrow-repeat"></i> Atualizar metas
+          </button>
+        </div>
+      </div>
+
+      <div id="metasCardsDashboard" class="metas-cards"></div>
+      <div id="metasEmptyDashboard" class="metas-empty" style="display:none;"></div>
+    </div>
+
+    <div class="grid" style="margin-top:12px;">
+      <div class="card pad" style="grid-column: span 6;">
+        <div class="chart-title">
+          <h3 id="tituloGraficoEsquerda"><i class="bi bi-graph-up"></i> Frequência semanal (mês)</h3>
+          <div class="hint" id="hintGraficoEsquerda">Inspeções mensal</div>
+        </div>
+        <div style="margin-top:10px;">
+          <canvas id="cvFrequencia"></canvas>
+        </div>
+      </div>
+
+      <div class="card pad" style="grid-column: span 6;">
+        <div class="chart-title">
+          <h3 id="tituloGraficoDireita"><i class="bi bi-bar-chart"></i> Inspeções x NC por mês (período)</h3>
+          <div class="hint" id="hintGraficoDireita">Acumulado do período</div>
+        </div>
+        <div style="margin-top:10px;">
+          <canvas id="cvAno"></canvas>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="canvasTooltip" class="canvas-tip"></div>
+
+<script>
+const API = "https://inspecoes.pedro-fillype.workers.dev";
+
+const dashboardState = {
+  inspecoesFiltradas: [],
+  rankingFiltrado: [],
+  filtros: {
+    mesIni: "",
+    mesFim: "",
+    regional: "",
+    supervisor: "",
+    tipoEquipe: ""
+  }
+};
+
+function formatarDataBR(iso){
+  const s = String(iso || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return s || "-";
+  const [y,m,d] = s.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+function addMonths(dateObj, months){
+  const d = new Date(dateObj.getTime());
+  const day = d.getDate();
+  d.setMonth(d.getMonth() + Number(months || 0));
+  if (d.getDate() < day) d.setDate(0);
+  return d;
+}
+
+function diffDays(a, b){
+  const ms = b.getTime() - a.getTime();
+  return Math.ceil(ms / (1000 * 60 * 60 * 24));
+}
+
+function weeksInMonth(yyyyMM){
+  const [y, m] = String(yyyyMM || "").split("-");
+  if (!y || !m) return 5;
+  const year = Number(y);
+  const month = Number(m);
+  const lastDay = new Date(year, month, 0).getDate();
+  return Math.ceil(lastDay / 7);
+}
+
+function weekOfMonthFromISO(iso){
+  const dt = new Date(`${iso}T00:00:00`);
+  if (isNaN(dt.getTime())) return null;
+  return Math.floor((dt.getDate() - 1) / 7) + 1;
+}
+
+function logout(){
+  localStorage.removeItem("logado");
+  localStorage.removeItem("token");
+  localStorage.removeItem("perfil");
+  localStorage.removeItem("lider");
+  window.location.href = "https://coec-epb.github.io/login_inspecoes/";
+}
+
+if (localStorage.getItem("logado") !== "true") logout();
+const token = String(localStorage.getItem("token") || "").trim();
+if (!token) logout();
+
+function setStatus(msg, type=""){
+  const el = document.getElementById("status");
+  if (!el) return;
+  el.textContent = msg;
+  el.className = "status " + (type || "");
+}
+
+async function apiFetch(path, options={}){
+  return fetch(`${API}${path}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(options.headers || {})
+    }
+  });
+}
+
+function b64urlToString(b64url) {
+  try {
+    let b64 = String(b64url || "").replace(/-/g, "+").replace(/_/g, "/");
+    while (b64.length % 4) b64 += "=";
+    return atob(b64);
+  } catch { return ""; }
+}
+
+function decodeTokenPayloadCompat(token) {
+  try {
+    const parts = String(token || "").split(".");
+    if (parts.length < 2) return null;
+
+    const maybeWorkerBody = parts[0];
+    const maybeJwtPayload = parts[1];
+
+    const workerJson = b64urlToString(maybeWorkerBody);
+    if (workerJson && workerJson.trim().startsWith("{")) return JSON.parse(workerJson);
+
+    const jwtJson = b64urlToString(maybeJwtPayload);
+    if (jwtJson && jwtJson.trim().startsWith("{")) return JSON.parse(jwtJson);
+
+    return null;
+  } catch { return null; }
+}
+
+function getNomeDoToken(){
+  const lsLider = String(localStorage.getItem("lider") || "").trim();
+  if (lsLider) return lsLider;
+
+  const payload = decodeTokenPayloadCompat(token);
+  if (!payload) return "";
+  return String(payload.lider || payload.nome || payload.name || "").trim();
+}
+
+function normName(s){
+  return String(s || "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/\s+/g," ").trim().toUpperCase();
+}
+
+function normalizarTexto(v){
+  return String(v || "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+}
+
+const REGIONAL_POR_LIDER = {
+  "ANDERSON DE ARAUJO VASCONCELOS": "CENTRO",
+  "EDEVALDO FELICIANO DA SILVA": "CENTRO",
+  "ALEXANDRE BATISTA DIAS": "OESTE",
+  "DAVIDSON DA SILVA GOMES": "CENTRO",
+  "THOMAZ CHAVES DO NASCIMENTO": "LESTE",
+  "WESLEY FERNANDES DE SOUZA": "LESTE",
+  "JANSEN LACERDA DE OLIVEIRA JUNIOR": "OESTE",
+  "FABIANO OLIVEIRA DE MENEZES": "OESTE",
+  "CRISTIANO CAETANO MADEIRO": "OESTE",
+  "NATHALIA HOLANDA VILHENA": "LESTE",
+  "EDIVALDO DA SILVA BRANDAO NETO": "LESTE",
+  "RENAN IGOR MENEZES DA SILVA": "CENTRO",
+  "MACIEL GOMES DE AGUIAR": "CENTRO",
+  "DELMIR BARBOSA MAXIMIANO": "LESTE",
+  "FABIO LIMA DE FRANCA": "LESTE",
+  "YURI VILMAR BATISTA MELO": "LESTE",
+  "MARCONE HENRIQUE DA CRUZ": "OESTE",
+  "RENATO LINS DE VASCONCELOS NETO": "LESTE",
+  "ANTONIO PEREIRA GOMES":"CENTRO",
+  "FABRICIO ANDRE SILVA DE ARAUJO": "LESTE",
+  "WELLINGTON ANDRADE DE PAIVA": "LESTE",
+  "GERALDO PEDRO DA SILVA JUNIOR": "LESTE",
+  "RICHARDSON SILVA DE OLIVEIRA": "LESTE",
+  "FERNANDO LIMA DA SILVA": "LESTE",
+  "LEONARDO WAGNER DE SOUSA TEIXEIRA": "LESTE",
+  "IVAN DE SOUSA BRAGA": "LESTE",
+  "MARCIO JOSE TOURINHO DIAS": "LESTE",
+  "ADNILSON PIMENTEL DE SOUZA": "LESTE",
+  "ALMIR BITTENCOURT NETO": "LESTE",
+  "FRANCISCO DE ASSIS PEREIRA JUNIOR": "OESTE",
+  "FERNANDO ALVES PESSOA": "OESTE",
+  "FRANCISCO BATISTA DE LIMA": "OESTE",
+  "GIESY LAMOUNIER DE OLIVEIRA MACIEL": "OESTE",
+  "JORGE LUIS MARQUES DOS SANTOS": "OESTE",
+  "ANDERSON BARROS VELEZ": "CENTRO",
+  "ANGELO FLAVIO DA SILVA": "CENTRO",
+  "HAROLDO QUARESMA GOMES": "CENTRO",
+  "YAGO ALBINO CRUZ": "CENTRO",
+  "JOSE LUIS ALVES DE LIMA": "CENTRO",
+  "ADRIANO PAULO DA SILVA": "CENTRO",
+  "IRIALLESON DA SILVA LIMA": "CENTRO",
+  "JOSE MARIO DE ALEXANDRE SARAIVA": "CENTRO",
+  "ANTONIO CESAR PEREIRA ROCHA": "CENTRO"
+};
+
+function isInRegionalByLiderNome(liderNome, regional){
+  if (!regional) return true;
+  const reg = REGIONAL_POR_LIDER[String(liderNome||"").trim()] || "";
+  return reg === regional;
+}
+
+function mesAtualYYYYMM(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+}
+
+function compareYYYYMM(a, b){
+  return String(a).localeCompare(String(b));
+}
+
+function ordenarMeses(mesIni, mesFim){
+  if (!mesIni && !mesFim) {
+    const atual = mesAtualYYYYMM();
+    return { mesIni: atual, mesFim: atual };
+  }
+  if (!mesIni) mesIni = mesFim;
+  if (!mesFim) mesFim = mesIni;
+
+  if (compareYYYYMM(mesIni, mesFim) > 0) {
+    return { mesIni: mesFim, mesFim: mesIni };
+  }
+  return { mesIni, mesFim };
+}
+
+function monthRangeToDates(mesIni, mesFim){
+  const [y1, m1] = String(mesIni || "").split("-");
+  const [y2, m2] = String(mesFim || "").split("-");
+  if (!y1 || !m1 || !y2 || !m2) return { ini:"", fim:"" };
+
+  const lastDay = new Date(Number(y2), Number(m2), 0).getDate();
+
+  return {
+    ini: `${y1}-${m1}-01`,
+    fim: `${y2}-${m2}-${String(lastDay).padStart(2, "0")}`
+  };
+}
+
+function getMonthsBetween(mesIni, mesFim){
+  const out = [];
+  const { mesIni: mi, mesFim: mf } = ordenarMeses(mesIni, mesFim);
+
+  let [y, m] = mi.split("-").map(Number);
+  const [yf, mfNum] = mf.split("-").map(Number);
+
+  while (y < yf || (y === yf && m <= mfNum)){
+    out.push(`${y}-${String(m).padStart(2,"0")}`);
+    m++;
+    if (m > 12){
+      m = 1;
+      y++;
+    }
+  }
+  return out;
+}
+
+function nomeMes(mm){
+  const map = {
+    "01":"Jan","02":"Fev","03":"Mar","04":"Abr","05":"Mai","06":"Jun",
+    "07":"Jul","08":"Ago","09":"Set","10":"Out","11":"Nov","12":"Dez"
+  };
+  return map[mm] || mm;
+}
+
+function labelMes(yyyyMM){
+  const [y, m] = String(yyyyMM || "").split("-");
+  return `${nomeMes(m)}/${String(y).slice(-2)}`;
+}
+
+async function fetchInspecoesRange(ini, fim, lider){
+  const qs = new URLSearchParams();
+  if (ini) qs.set("data_ini", ini);
+  if (fim) qs.set("data_fim", fim);
+  if (lider) qs.set("lider", lider);
+
+  const res = await apiFetch(`/inspecoes?${qs.toString()}`);
+  const text = await res.text();
+  if (!res.ok) throw new Error(text);
+
+  const data = JSON.parse(text);
+  return Array.isArray(data) ? data : (data.results || []);
+}
+
+async function fetchRankingColaboradores(){
+  const res = await apiFetch(`/ranking-colaboradores`);
+  const text = await res.text();
+  if (!res.ok) throw new Error(text);
+  const data = JSON.parse(text);
+  return Array.isArray(data.results) ? data.results : [];
+}
+
+async function fetchMetasSupervisores(mesRef){
+  const qs = new URLSearchParams();
+  if (mesRef) qs.set("mes", mesRef);
+
+  const res = await apiFetch(`/metas-supervisores?${qs.toString()}`);
+  const text = await res.text();
+  if (!res.ok) throw new Error(text);
+
+  const data = JSON.parse(text);
+  return Array.isArray(data.results) ? data.results : (Array.isArray(data) ? data : []);
+}
+
+function splitNomesCampo(v){
+  const s = String(v||"").trim();
+  if (!s) return [];
+  return s.split(/[,;|]/g).map(x => x.trim()).filter(Boolean);
+}
+
+function calcAbrangencia(inspecoesFiltradas, rankingFiltrado){
+  const totalSet = new Set();
+  (rankingFiltrado || []).forEach(r => {
+    const nome = String(r.colaborador || "").trim();
+    if (nome) totalSet.add(normName(nome));
+  });
+
+  const inspSet = new Set();
+  (inspecoesFiltradas || []).forEach(i => {
+    splitNomesCampo(i.auditados).forEach(n => inspSet.add(normName(n)));
+    splitNomesCampo(i.colaborador_1).forEach(n => inspSet.add(normName(n)));
+    splitNomesCampo(i.colaborador_2).forEach(n => inspSet.add(normName(n)));
+    splitNomesCampo(i.colaborador_3).forEach(n => inspSet.add(normName(n)));
+    splitNomesCampo(i.colaborador_4).forEach(n => inspSet.add(normName(n)));
+    splitNomesCampo(i.colaborador_5).forEach(n => inspSet.add(normName(n)));
+  });
+
+  const total = totalSet.size;
+  const inspecionados = [...inspSet].filter(n => totalSet.has(n)).length;
+  const pct = total > 0 ? (inspecionados / total) * 100 : 0;
+
+  return { total, inspecionados, pct };
+}
+
+function getTooltipEl(){ return document.getElementById("canvasTooltip"); }
+
+function showTip(text, clientX, clientY){
+  const tip = getTooltipEl();
+  if (!tip) return;
+
+  tip.innerHTML = text;
+  tip.style.display = "block";
+
+  const pad = 12;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  let x = clientX + pad;
+  let y = clientY + pad;
+
+  tip.style.left = x + "px";
+  tip.style.top  = y + "px";
+
+  const r = tip.getBoundingClientRect();
+  if (r.right > vw - 8) x = clientX - r.width - pad;
+  if (r.bottom > vh - 8) y = clientY - r.height - pad;
+
+  tip.style.left = x + "px";
+  tip.style.top  = y + "px";
+}
+
+function hideTip(){
+  const tip = getTooltipEl();
+  if (!tip) return;
+  tip.style.display = "none";
+}
+
+function attachCanvasTooltip(canvas){
+  if (!canvas) return;
+  if (canvas._tooltipBound) return;
+  canvas._tooltipBound = true;
+
+  canvas.addEventListener("mousemove", (ev) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = ev.clientX - rect.left;
+    const y = ev.clientY - rect.top;
+
+    const bars = canvas._bars || [];
+    let hit = null;
+
+    for (let i = bars.length - 1; i >= 0; i--){
+      const b = bars[i];
+      if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h){
+        hit = b;
+        break;
+      }
+    }
+
+    if (!hit) return hideTip();
+
+    showTip(
+      `<div class="muted">${hit.group}</div><div><b>${hit.series}</b>: ${hit.value}</div>`,
+      ev.clientX, ev.clientY
+    );
+  });
+
+  canvas.addEventListener("mouseleave", hideTip);
+  window.addEventListener("scroll", hideTip, { passive:true });
+}
+
+function drawBars(canvas, labels, valuesA, valuesB, labelA="A", labelB="B"){
+  const ctx = canvas.getContext("2d");
+
+  const W = canvas.clientWidth || 900;
+  const H = canvas.clientHeight || 320;
+  canvas.width = W;
+  canvas.height = H;
+
+  ctx.clearRect(0,0,W,H);
+
+  const padLeft = 40;
+  const padRight = 20;
+  const padTop = 30;
+  const padBottom = 40;
+
+  const chartW = W - padLeft - padRight;
+  const chartH = H - padTop - padBottom;
+
+  const allValues = [...(valuesA || []), ...(valuesB || [])];
+  const maxBase = Math.max(1, ...allValues);
+  const maxV = maxBase * 1.15;
+  const cols = labels.length || 1;
+
+  canvas._bars = [];
+
+  ctx.strokeStyle = "#ddd";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(padLeft, padTop);
+  ctx.lineTo(padLeft, H - padBottom);
+  ctx.lineTo(W - padRight, H - padBottom);
+  ctx.stroke();
+
+  ctx.font = "12px Segoe UI, Arial";
+  const steps = 4;
+  for(let s = 0; s <= steps; s++){
+    const v = (maxV / steps) * s;
+    const y = (H - padBottom) - (v / maxV) * chartH;
+
+    ctx.strokeStyle = "#efefef";
+    ctx.beginPath();
+    ctx.moveTo(padLeft, y);
+    ctx.lineTo(W - padRight, y);
+    ctx.stroke();
+
+    ctx.fillStyle = "#666";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    ctx.fillText(String(Math.round(v)), padLeft - 8, y);
+  }
+
+  const groupW = chartW / cols;
+  const hasB = !!labelB;
+  const barW = hasB
+    ? Math.max(10, Math.min(18, groupW / 4))
+    : Math.max(18, Math.min(40, groupW / 2.8));
+  const gap = hasB ? barW : 0;
+
+  for(let i = 0; i < cols; i++){
+    const totalBarsWidth = hasB ? (barW * 2 + gap) : barW;
+    const x0 = padLeft + i * groupW + (groupW - totalBarsWidth) / 2;
+
+    const a = Number(valuesA[i] ?? 0);
+    const b = Number(valuesB[i] ?? 0);
+
+    const hA = (a / maxV) * chartH;
+    const hB = (b / maxV) * chartH;
+
+    const yA = (H - padBottom) - hA;
+    const yB = (H - padBottom) - hB;
+
+    ctx.fillStyle = "rgba(0,151,206,.25)";
+    ctx.strokeStyle = "rgba(0,151,206,.35)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.rect(x0, yA, barW, hA);
+    ctx.fill();
+    ctx.stroke();
+
+    canvas._bars.push({
+      x:x0, y:yA, w:barW, h:hA,
+      group: labels[i], series: labelA, value: a
+    });
+
+    ctx.fillStyle = "#007fb0";
+    ctx.font = "bold 12px Segoe UI, Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    ctx.fillText(String(a), x0 + barW / 2, yA - 4);
+
+    if (hasB){
+      ctx.fillStyle = "rgba(255,99,71,.25)";
+      ctx.strokeStyle = "rgba(255,99,71,.35)";
+      ctx.beginPath();
+      ctx.rect(x0 + barW + gap, yB, barW, hB);
+      ctx.fill();
+      ctx.stroke();
+
+      canvas._bars.push({
+        x:x0 + barW + gap, y:yB, w:barW, h:hB,
+        group: labels[i], series: labelB, value: b
+      });
+
+      ctx.fillStyle = "#d65a3a";
+      ctx.font = "bold 12px Segoe UI, Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.fillText(String(b), x0 + barW + gap + barW / 2, yB - 4);
+    }
+
+    ctx.fillStyle = "#555";
+    ctx.font = "12px Segoe UI, Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    ctx.fillText(labels[i], padLeft + i * groupW + groupW / 2, H - padBottom + 8);
+  }
+
+  attachCanvasTooltip(canvas);
+}
+
+function drawWeeks(canvas, weeks, mesYYYYMM){
+  const n = weeksInMonth(mesYYYYMM);
+  const labels = Array.from({length: n}, (_, i) => `S${i+1}`);
+  const vals = Array.isArray(weeks) ? weeks.slice(0, n) : [];
+  while (vals.length < n) vals.push(0);
+  drawBars(canvas, labels, vals, [], "Inspeções", "");
+}
+
+function getGestoresDoMapa(regionalSelecionada = ""){
+  const lideres = Object.keys(REGIONAL_POR_LIDER || {});
+  const filtrados = regionalSelecionada
+    ? lideres.filter(l => (REGIONAL_POR_LIDER[l] || "") === regionalSelecionada)
+    : lideres;
+
+  return filtrados.sort((a,b)=> normName(a).localeCompare(normName(b)));
+}
+
+async function carregarSupervisoresNoSelect(){
+  const sel = document.getElementById("filtroSupervisor");
+  if (!sel) return;
+
+  const regional = document.getElementById("filtroRegional")?.value || "";
+  const lideres = getGestoresDoMapa(regional);
+
+  const valorAtual = sel.value || "";
+  sel.innerHTML =
+    `<option value="">Todos</option>` +
+    lideres.map(l => `<option value="${String(l).replaceAll('"',"&quot;")}">${l}</option>`).join("");
+
+  if (valorAtual && lideres.some(x => normName(x) === normName(valorAtual))){
+    sel.value = valorAtual;
+  } else {
+    const meu = normName(getNomeDoToken());
+    const found = lideres.find(x => normName(x) === meu);
+    if (found) sel.value = found;
+  }
+}
+
+function getNomeLiderInspecao(i){
+  return String(
+    i.lider ??
+    i.gestor_imediato ??
+    i.supervisor ??
+    i.gestor ??
+    ""
+  ).trim();
+}
+
+function getNC(i){
+  const cand = [
+    i.qtd_nc,
+    i.qtd_nao_conformidade,
+    i.nao_conformidades,
+    i.nao_conforme,
+    i.nc,
+    i.total_nc
+  ];
+  for (const v of cand){
+    const n = Number(v);
+    if (Number.isFinite(n)) return n;
+  }
+  if (Array.isArray(i.nao_conformidade_itens)) return i.nao_conformidade_itens.length;
+  return 0;
+}
+
+function getISODateFromInspecao(i){
+  const raw =
+    i.data_iso ??
+    i.data_inspecao ??
+    i.data ??
+    i.data_registro ??
+    "";
+  const s = String(raw || "").trim();
+  if (!s) return null;
+
+  if (s.includes("/")) {
+    const [d,m,y] = s.split("/");
+    if (y && m && d) return `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+  }
+  return s.slice(0,10);
+}
+
+function getTipoEquipeInspecao(i){
+  const bruto =
+    i.equipe_avaliada ??
+    i["Equipe Avaliada"] ??
+    i["EQUIPE AVALIADA"] ??
+    "";
+
+  const s = normalizarTexto(bruto);
+
+  if (s === "EQUIPE PRESTADORA") return "PRESTADORA";
+  if (s === "EQUIPE ENERGISA") return "ENERGISA";
+
+  return "";
+}
+
+function getTipoEquipeRegistro(r){
+  const bruto =
+    r.equipe_avaliada ??
+    r["Equipe Avaliada"] ??
+    r["EQUIPE AVALIADA"] ??
+    "";
+
+  const s = normalizarTexto(bruto);
+
+  if (s === "EQUIPE PRESTADORA") return "PRESTADORA";
+  if (s === "EQUIPE ENERGISA") return "ENERGISA";
+
+  return "";
+}
+
+function filtrarPorTipoEquipe(lista, tipoEquipe){
+  if (!tipoEquipe) return lista || [];
+  return (lista || []).filter(i => getTipoEquipeInspecao(i) === tipoEquipe);
+}
+
+function agruparPorMes(inspecoes, mesesLista){
+  const map = new Map();
+  mesesLista.forEach(m => map.set(m, { inspecoes: 0, nc: 0 }));
+
+  (inspecoes || []).forEach(i => {
+    const iso = getISODateFromInspecao(i);
+    if (!iso) return;
+    const chave = iso.slice(0,7);
+    if (!map.has(chave)) return;
+    const atual = map.get(chave);
+    atual.inspecoes += 1;
+    atual.nc += getNC(i);
+  });
+
+  return mesesLista.map(m => ({
+    mes: m,
+    label: labelMes(m),
+    inspecoes: map.get(m)?.inspecoes || 0,
+    nc: map.get(m)?.nc || 0
+  }));
+}
+
+function montarEscopoTexto(rotuloEscopo, regional, supervisor, tipoEquipe){
+  const escopos = [rotuloEscopo];
+  if (regional) escopos.push(`Regional: ${regional}`);
+  if (supervisor) escopos.push(`Supervisor: ${supervisor}`);
+  if (tipoEquipe) escopos.push(`Equipe: ${tipoEquipe}`);
+  return escopos.join(" • ");
+}
+
+function escapeCSV(value){
+  const s = String(value ?? "");
+  if (/[",;\n]/.test(s)) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+
+function obterColunasAnalitico(lista){
+  const preferidas = [
+    "id","numero","codigo","data","data_iso","data_inspecao","data_registro","regional",
+    "lider","gestor_imediato","supervisor","gestor","equipe_avaliada","auditados",
+    "colaborador_1","colaborador_2","colaborador_3","colaborador_4","colaborador_5",
+    "qtd_nc","qtd_nao_conformidade","nao_conformidades","nao_conforme","nc","total_nc",
+    "observacao","observacoes","descricao","titulo"
+  ];
+
+  const set = new Set(preferidas);
+  (lista || []).forEach(item => {
+    Object.keys(item || {}).forEach(k => set.add(k));
+  });
+
+  return Array.from(set).filter(col =>
+    (lista || []).some(item => Object.prototype.hasOwnProperty.call(item || {}, col))
+  );
+}
+
+function baixarCSV(nomeArquivo, linhas){
+  const csv = "\uFEFF" + linhas.join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = nomeArquivo;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function exportarAnaliticoCSV(){
+  try{
+    const lista = Array.isArray(dashboardState.inspecoesFiltradas)
+      ? dashboardState.inspecoesFiltradas
+      : [];
+
+    if (!lista.length){
+      setStatus("Não há registros na tela para exportar.", "error");
+      return;
+    }
+
+    const colunas = obterColunasAnalitico(lista);
+    const linhas = [];
+    linhas.push(colunas.map(escapeCSV).join(";"));
+
+    lista.forEach(item => {
+      const row = colunas.map(col => {
+        const valor = item?.[col];
+        if (Array.isArray(valor)) return escapeCSV(valor.join(" | "));
+        if (valor && typeof valor === "object") return escapeCSV(JSON.stringify(valor));
+        return escapeCSV(valor ?? "");
+      });
+      linhas.push(row.join(";"));
+    });
+
+    const f = dashboardState.filtros || {};
+    const nome = [
+      "analitico_tela",
+      f.mesIni || "sem_inicio",
+      f.mesFim || "sem_fim",
+      f.regional || "todas_regioes",
+      f.supervisor ? normName(f.supervisor).replace(/\s+/g, "_") : "todos_supervisores",
+      f.tipoEquipe || "todas_equipes"
+    ].join("_") + ".csv";
+
+    baixarCSV(nome, linhas);
+    setStatus(`Download concluído: ${lista.length} registro(s) da tela.`, "success");
+  } catch (e){
+    console.error(e);
+    setStatus("Erro ao exportar os registros da tela.", "error");
+  }
+}
+
+function valorNum(v){
+  const n = Number(v ?? 0);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function classePercentualMeta(pct){
+  const n = Number(pct || 0);
+  if (n >= 100) return "meta-ok";
+  if (n >= 80) return "meta-alerta";
+  return "meta-ruim";
+}
+
+function getMesesRow(row){
+  return {
+    jan: valorNum(row.jan),
+    fev: valorNum(row.fev),
+    mar: valorNum(row.mar),
+    abr: valorNum(row.abr),
+    mai: valorNum(row.mai),
+    jun: valorNum(row.jun),
+    jul: valorNum(row.jul),
+    ago: valorNum(row.ago),
+    set: valorNum(row.set ?? row.setembro),
+    out: valorNum(row.out),
+    nov: valorNum(row.nov),
+    dez: valorNum(row.dez)
+  };
+}
+
+function somarRowsMetas(rows, nomeGeral = "GERAL"){
+  const base = {
+    nome: nomeGeral,
+    previsto: 0,
+    realizado: 0,
+    meta_ate_mes: 0,
+    saldo: 0,
+    percentual: 0,
+    jan: 0, fev: 0, mar: 0, abr: 0, mai: 0, jun: 0,
+    jul: 0, ago: 0, set: 0, out: 0, nov: 0, dez: 0
+  };
+
+  rows.forEach(r => {
+    const meses = getMesesRow(r);
+    base.jan += meses.jan;
+    base.fev += meses.fev;
+    base.mar += meses.mar;
+    base.abr += meses.abr;
+    base.mai += meses.mai;
+    base.jun += meses.jun;
+    base.jul += meses.jul;
+    base.ago += meses.ago;
+    base.set += meses.set;
+    base.out += meses.out;
+    base.nov += meses.nov;
+    base.dez += meses.dez;
+
+    base.previsto += valorNum(r.previsto);
+    base.realizado += valorNum(r.realizado);
+    base.meta_ate_mes += valorNum(r.meta_ate_mes);
+    base.saldo += valorNum(r.saldo);
+  });
+
+  base.percentual = base.meta_ate_mes > 0
+    ? (base.realizado / base.meta_ate_mes) * 100
+    : 0;
+
+  return base;
+}
+
+function renderMetaCard(row, subtitle = ""){
+  const wrap = document.createElement("div");
+  wrap.className = "meta-card";
+
+  const meses = getMesesRow(row);
+  const previsto = valorNum(row.previsto);
+  const realizado = valorNum(row.realizado);
+  const metaAteMes = valorNum(row.meta_ate_mes);
+  const saldo = valorNum(row.saldo);
+  const percentual = valorNum(row.percentual);
+
+  const clsPct = classePercentualMeta(percentual);
+  const clsSaldo = saldo >= 0 ? "meta-ok" : "meta-ruim";
+  const badgeText = percentual >= 100 ? "Meta atingida" : (percentual >= 80 ? "Em atenção" : "Abaixo da meta");
+
+  wrap.innerHTML = `
+    <div class="meta-card-header">
+      <div>
+        <div class="meta-card-title">${row.nome ?? "-"}</div>
+        <div class="meta-card-sub">${subtitle || "Indicadores acumulados até o mês selecionado"}</div>
+      </div>
+      <span class="meta-badge ${clsPct}">
+        <i class="bi bi-bullseye"></i> ${badgeText}
+      </span>
+    </div>
+
+    <div class="meta-main-grid">
+      <div class="meta-box">
+        <div class="meta-box-label">Previsto anual</div>
+        <div class="meta-box-value">${previsto}</div>
+      </div>
+
+      <div class="meta-box">
+        <div class="meta-box-label">Realizado</div>
+        <div class="meta-box-value">${realizado}</div>
+      </div>
+
+      <div class="meta-box">
+        <div class="meta-box-label">Meta até o mês</div>
+        <div class="meta-box-value">${metaAteMes.toFixed(2).replace(".", ",")}</div>
+      </div>
+
+      <div class="meta-box">
+        <div class="meta-box-label">Saldo</div>
+        <div class="meta-box-value ${clsSaldo}">${saldo.toFixed(2).replace(".", ",")}</div>
+        <div class="meta-box-small">Diferença entre realizado e meta acumulada</div>
+      </div>
+
+      <div class="meta-box" style="grid-column: span 2;">
+        <div class="meta-box-label">% atingido</div>
+        <div class="meta-box-value ${clsPct}">${percentual.toFixed(1).replace(".", ",")}%</div>
+      </div>
+    </div>
+
+    <div class="meta-months">
+      <div class="meta-month"><div class="meta-month-name">Jan</div><div class="meta-month-value">${meses.jan}</div></div>
+      <div class="meta-month"><div class="meta-month-name">Fev</div><div class="meta-month-value">${meses.fev}</div></div>
+      <div class="meta-month"><div class="meta-month-name">Mar</div><div class="meta-month-value">${meses.mar}</div></div>
+      <div class="meta-month"><div class="meta-month-name">Abr</div><div class="meta-month-value">${meses.abr}</div></div>
+      <div class="meta-month"><div class="meta-month-name">Mai</div><div class="meta-month-value">${meses.mai}</div></div>
+      <div class="meta-month"><div class="meta-month-name">Jun</div><div class="meta-month-value">${meses.jun}</div></div>
+      <div class="meta-month"><div class="meta-month-name">Jul</div><div class="meta-month-value">${meses.jul}</div></div>
+      <div class="meta-month"><div class="meta-month-name">Ago</div><div class="meta-month-value">${meses.ago}</div></div>
+      <div class="meta-month"><div class="meta-month-name">Set</div><div class="meta-month-value">${meses.set}</div></div>
+      <div class="meta-month"><div class="meta-month-name">Out</div><div class="meta-month-value">${meses.out}</div></div>
+      <div class="meta-month"><div class="meta-month-name">Nov</div><div class="meta-month-value">${meses.nov}</div></div>
+      <div class="meta-month"><div class="meta-month-name">Dez</div><div class="meta-month-value">${meses.dez}</div></div>
+    </div>
+  `;
+
+  return wrap;
+}
+
+async function atualizarTabelaMetasDashboard(){
+  const container = document.getElementById("metasCardsDashboard");
+  const empty = document.getElementById("metasEmptyDashboard");
+  const resumo = document.getElementById("metaResumoPeriodo");
+
+  if (!container || !empty) return;
+
+  try{
+    const mesFim = document.getElementById("filtroMesFim")?.value || mesAtualYYYYMM();
+    const regional = document.getElementById("filtroRegional")?.value || "";
+    const supervisor = document.getElementById("filtroSupervisor")?.value || "";
+
+    if (resumo) {
+      resumo.textContent = `Meta até: ${labelMes(mesFim)}`;
+    }
+
+    container.innerHTML = "";
+    empty.style.display = "none";
+    empty.textContent = "";
+
+    let rows = await fetchMetasSupervisores(mesFim);
+
+    if (regional) {
+      rows = rows.filter(r => isInRegionalByLiderNome(String(r.nome || "").trim(), regional));
+    }
+
+    if (supervisor) {
+      rows = rows.filter(r => normName(r.nome) === normName(supervisor));
+    }
+
+    if (!rows.length){
+      empty.style.display = "block";
+      empty.textContent = "Nenhuma meta encontrada para os filtros selecionados.";
+      return;
+    }
+
+    if (supervisor) {
+      rows.sort((a,b) => normName(a.nome).localeCompare(normName(b.nome)));
+      rows.forEach(r => {
+        container.appendChild(
+          renderMetaCard(r, `Supervisor filtrado • ${regional || "Todas as regionais"}`)
+        );
+      });
+      return;
+    }
+
+    const geral = somarRowsMetas(rows, "GERAL");
+    container.appendChild(
+      renderMetaCard(
+        geral,
+        `${rows.length} supervisor(es) considerados • ${regional || "Todas as regionais"}`
+      )
+    );
+
+  } catch (e){
+    console.error(e);
+    container.innerHTML = "";
+    empty.style.display = "block";
+    empty.textContent = "Erro ao carregar metas.";
+  }
+}
+
+async function atualizarDashboard(){
+  try{
+    setStatus("Carregando dados...", "");
+
+    const mesIniRaw = document.getElementById("filtroMesIni")?.value || mesAtualYYYYMM();
+    const mesFimRaw = document.getElementById("filtroMesFim")?.value || mesIniRaw;
+    const regional = document.getElementById("filtroRegional")?.value || "";
+    const supervisor = document.getElementById("filtroSupervisor")?.value || "";
+    const tipoEquipe = document.getElementById("filtroTipoEquipe")?.value || "";
+
+    const { mesIni, mesFim } = ordenarMeses(mesIniRaw, mesFimRaw);
+    const periodo = monthRangeToDates(mesIni, mesFim);
+    const mesesLista = getMonthsBetween(mesIni, mesFim);
+    const ehMesUnico = mesIni === mesFim;
+
+    document.getElementById("filtroMesIni").value = mesIni;
+    document.getElementById("filtroMesFim").value = mesFim;
+
+    const inspecoesPeriodoBase = await fetchInspecoesRange(periodo.ini, periodo.fim, supervisor || "");
+
+    let inspecoesPeriodoFiltradas = !regional
+      ? inspecoesPeriodoBase
+      : inspecoesPeriodoBase.filter(i => isInRegionalByLiderNome(getNomeLiderInspecao(i), regional));
+
+    inspecoesPeriodoFiltradas = filtrarPorTipoEquipe(inspecoesPeriodoFiltradas, tipoEquipe);
+
+    const totalInspecoesPeriodo = inspecoesPeriodoFiltradas.length;
+    const totalNCPeriodo = inspecoesPeriodoFiltradas.reduce((acc, i) => acc + getNC(i), 0);
+
+    document.getElementById("kpiInspecoes").textContent = totalInspecoesPeriodo;
+    document.getElementById("kpiNC").textContent = totalNCPeriodo;
+
+    const rotuloEscopo = ehMesUnico ? `Mês ${mesIni}` : `Período ${mesIni} até ${mesFim}`;
+    const escopoTexto = montarEscopoTexto(rotuloEscopo, regional, supervisor, tipoEquipe);
+
+    document.getElementById("kpiInspecoesSub").textContent = escopoTexto;
+    document.getElementById("kpiNCSub").textContent = escopoTexto;
+
+    const agrupado = agruparPorMes(inspecoesPeriodoFiltradas, mesesLista);
+    const labelsPeriodo = agrupado.map(x => x.label);
+    const insPeriodo = agrupado.map(x => x.inspecoes);
+    const ncPeriodo = agrupado.map(x => x.nc);
+
+    drawBars(
+      document.getElementById("cvAno"),
+      labelsPeriodo,
+      insPeriodo,
+      ncPeriodo,
+      "Inspeções",
+      "NC"
+    );
+
+    if (ehMesUnico) {
+      document.getElementById("tituloGraficoEsquerda").innerHTML = `<i class="bi bi-graph-up"></i> Frequência semanal (mês)`;
+      document.getElementById("hintGraficoEsquerda").textContent = `Inspeções de ${mesIni}`;
+
+      const n = weeksInMonth(mesIni);
+      const weeks = new Array(n).fill(0);
+
+      for (const i of inspecoesPeriodoFiltradas) {
+        const iso = getISODateFromInspecao(i);
+        if (!iso || iso.slice(0,7) !== mesIni) continue;
+        const w = weekOfMonthFromISO(iso);
+        if (!w || w < 1 || w > n) continue;
+        weeks[w-1] += 1;
+      }
+
+      drawWeeks(document.getElementById("cvFrequencia"), weeks, mesIni);
+    } else {
+      document.getElementById("tituloGraficoEsquerda").innerHTML = `<i class="bi bi-graph-up"></i> Inspeções por mês (período)`;
+      document.getElementById("hintGraficoEsquerda").textContent = `${mesIni} até ${mesFim}`;
+
+      drawBars(
+        document.getElementById("cvFrequencia"),
+        labelsPeriodo,
+        insPeriodo,
+        [],
+        "Inspeções",
+        ""
+      );
+    }
+
+    const ranking = await fetchRankingColaboradores();
+
+    const rankingFiltrado = (ranking || []).filter(r => {
+      const liderR = String(r.lider || "").trim();
+
+      if (regional && !isInRegionalByLiderNome(liderR, regional)) return false;
+      if (supervisor && normName(liderR) !== normName(supervisor)) return false;
+      if (tipoEquipe && getTipoEquipeRegistro(r) !== tipoEquipe) return false;
+
+      return true;
+    });
+
+    const ab = calcAbrangencia(inspecoesPeriodoFiltradas, rankingFiltrado);
+
+    document.getElementById("kpiAbrangencia").textContent =
+      `${ab.pct.toFixed(1).replace(".",",")}%`;
+
+    const faltamColabs = Math.max(0, ab.total - ab.inspecionados);
+
+    document.getElementById("kpiAbrangenciaSub").textContent =
+      `${ab.inspecionados} inspecionados / ${ab.total} total • Faltam: ${faltamColabs}`;
+
+    const inicioPrazo = new Date("2026-02-03T00:00:00");
+    const fimPrazo = addMonths(inicioPrazo, 4);
+    const hoje = new Date();
+    const diasTotais = Math.max(0, diffDays(inicioPrazo, fimPrazo));
+    const diasRestantes = Math.max(0, diffDays(hoje, fimPrazo));
+
+    const elPrazo = document.getElementById("kpiAbrangenciaPrazo");
+    if (elPrazo) {
+      elPrazo.textContent =
+        `Prazo: ${diasRestantes} dia(s) restantes • até ${formatarDataBR(fimPrazo.toISOString().slice(0,10))} (total ${diasTotais} dias)`;
+    }
+
+    dashboardState.inspecoesFiltradas = inspecoesPeriodoFiltradas;
+    dashboardState.rankingFiltrado = rankingFiltrado;
+    dashboardState.filtros = { mesIni, mesFim, regional, supervisor, tipoEquipe };
+
+    await atualizarTabelaMetasDashboard();
+
+    setStatus(`Dashboard atualizado • ${rotuloEscopo}`, "success");
+  } catch(e){
+    console.error(e);
+    setStatus("Erro ao carregar dashboard (veja o console).", "error");
+  }
+}
+
+(function init(){
+  const atual = mesAtualYYYYMM();
+
+  const mesIniEl = document.getElementById("filtroMesIni");
+  const mesFimEl = document.getElementById("filtroMesFim");
+
+  if (mesIniEl && !mesIniEl.value) mesIniEl.value = atual;
+  if (mesFimEl && !mesFimEl.value) mesFimEl.value = atual;
+
+  carregarSupervisoresNoSelect();
+
+  document.getElementById("btnAtualizar")?.addEventListener("click", atualizarDashboard);
+  document.getElementById("btnDownloadAnalitico")?.addEventListener("click", exportarAnaliticoCSV);
+  document.getElementById("btnAtualizarMetasDashboard")?.addEventListener("click", atualizarTabelaMetasDashboard);
+
+  document.getElementById("filtroMesIni")?.addEventListener("change", atualizarDashboard);
+  document.getElementById("filtroMesFim")?.addEventListener("change", atualizarDashboard);
+
+  document.getElementById("filtroRegional")?.addEventListener("change", () => {
+    carregarSupervisoresNoSelect();
+    atualizarDashboard();
+  });
+
+  document.getElementById("filtroTipoEquipe")?.addEventListener("change", atualizarDashboard);
+  document.getElementById("filtroSupervisor")?.addEventListener("change", atualizarDashboard);
+
+  atualizarDashboard();
+})();
+</script>
 </body>
 </html>
