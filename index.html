@@ -1035,13 +1035,13 @@ async function carregarSupervisoresNoSelect(){
   const regional = document.getElementById("filtroRegional")?.value || "";
   const lideres = getGestoresDoMapa(regional);
 
-  const valorAtual = sel.value || "";
+  const Atual = sel.value || "";
   sel.innerHTML =
     `<option value="">Todos</option>` +
     lideres.map(l => `<option value="${String(l).replaceAll('"',"&quot;")}">${l}</option>`).join("");
 
-  if (valorAtual && lideres.some(x => normName(x) === normName(valorAtual))){
-    sel.value = valorAtual;
+  if (Atual && lideres.some(x => normName(x) === normName(Atual))){
+    sel.value = Atual;
   } else {
     const meu = normName(getNomeDoToken());
     const found = lideres.find(x => normName(x) === meu);
@@ -1217,8 +1217,8 @@ function exportarAnaliticoCSV(){
 
     lista.forEach(item => {
       const row = colunas.map(col => {
-        const valor = item?.[col];
-        if (Array.isArray(valor)) return escapeCSV(valor.join(" | "));
+        const  = item?.[col];
+        if (Array.isArray()) return escapeCSV(valor.join(" | "));
         if (valor && typeof valor === "object") return escapeCSV(JSON.stringify(valor));
         return escapeCSV(valor ?? "");
       });
@@ -1246,6 +1246,109 @@ function exportarAnaliticoCSV(){
 function valorNum(v){
   const n = Number(v ?? 0);
   return Number.isFinite(n) ? n : 0;
+}
+
+  const CAMPO_META_POR_MES = {
+  "01":"jan",
+  "02":"fev",
+  "03":"mar",
+  "04":"abr",
+  "05":"mai",
+  "06":"jun",
+  "07":"jul",
+  "08":"ago",
+  "09":"set",
+  "10":"out",
+  "11":"nov",
+  "12":"dez"
+};
+
+function ultimoDiaDoMesYYYYMM(yyyyMM){
+  const [y, m] = String(yyyyMM || "").split("-");
+  if (!y || !m) return "";
+  const lastDay = new Date(Number(y), Number(m), 0).getDate();
+  return `${y}-${m}-${String(lastDay).padStart(2,"0")}`;
+}
+
+function somarPrevistoAnualRow(row){
+  const meses = getMesesRow(row);
+  return (
+    valorNum(meses.jan) + valorNum(meses.fev) + valorNum(meses.mar) +
+    valorNum(meses.abr) + valorNum(meses.mai) + valorNum(meses.jun) +
+    valorNum(meses.jul) + valorNum(meses.ago) + valorNum(meses.set) +
+    valorNum(meses.out) + valorNum(meses.nov) + valorNum(meses.dez)
+  );
+}
+
+function obterMetaDoMesRow(row, mesRef){
+  const mm = String(mesRef || "").slice(5,7);
+  const campo = CAMPO_META_POR_MES[mm];
+  if (!campo) return 0;
+  return valorNum(row?.[campo]);
+}
+
+function filtrarInspecoesPorSupervisor(lista, supervisor){
+  if (!supervisor) return Array.isArray(lista) ? lista : [];
+  return (lista || []).filter(i => normName(getNomeLiderInspecao(i)) === normName(supervisor));
+}
+
+function contarInspecoesDoMes(lista, mesRef){
+  return (lista || []).filter(i => {
+    const iso = getISODateFromInspecao(i);
+    return iso && iso.slice(0,7) === mesRef;
+  }).length;
+}
+
+function somarRowsMetasNovo(rows, nomeGeral = "GERAL"){
+  const base = {
+    nome: nomeGeral,
+    jan: 0, fev: 0, mar: 0, abr: 0, mai: 0, jun: 0,
+    jul: 0, ago: 0, set: 0, out: 0, nov: 0, dez: 0
+  };
+
+  (rows || []).forEach(r => {
+    const meses = getMesesRow(r);
+    base.jan += valorNum(meses.jan);
+    base.fev += valorNum(meses.fev);
+    base.mar += valorNum(meses.mar);
+    base.abr += valorNum(meses.abr);
+    base.mai += valorNum(meses.mai);
+    base.jun += valorNum(meses.jun);
+    base.jul += valorNum(meses.jul);
+    base.ago += valorNum(meses.ago);
+    base.set += valorNum(meses.set);
+    base.out += valorNum(meses.out);
+    base.nov += valorNum(meses.nov);
+    base.dez += valorNum(meses.dez);
+  });
+
+  return base;
+}
+
+function montarResumoMeta({ row, mesRef, inspecoesPeriodo, inspecoesYTD, nomeFallback = "GERAL" }){
+  const previstoAnual = somarPrevistoAnualRow(row);
+  const metaMes = obterMetaDoMesRow(row, mesRef);
+
+  const realizadoPeriodo = (inspecoesPeriodo || []).length;
+  const realizadoMes = contarInspecoesDoMes(inspecoesPeriodo || [], mesRef);
+  const realizadoAnual = (inspecoesYTD || []).length;
+
+  const saldoMes = realizadoMes - metaMes;
+  const percentualMensal = metaMes > 0 ? (realizadoMes / metaMes) * 100 : 0;
+  const percentualAnual = previstoAnual > 0 ? (realizadoAnual / previstoAnual) * 100 : 0;
+
+  return {
+    nome: row?.nome || nomeFallback,
+    previstoAnual,
+    realizadoPeriodo,
+    realizadoMes,
+    realizadoAnual,
+    metaMes,
+    saldoMes,
+    percentualMensal,
+    percentualAnual,
+    meses: getMesesRow(row)
+  };
 }
 
 function classePercentualMeta(pct){
@@ -1312,28 +1415,36 @@ function somarRowsMetas(rows, nomeGeral = "GERAL"){
   return base;
 }
 
-function renderMetaCard(row, subtitle = ""){
+function renderMetaCard(resumo, subtitle = ""){
   const wrap = document.createElement("div");
   wrap.className = "meta-card";
 
-  const meses = getMesesRow(row);
-  const previsto = valorNum(row.previsto);
-  const realizado = valorNum(row.realizado);
-  const metaAteMes = valorNum(row.meta_ate_mes);
-  const saldo = valorNum(row.saldo);
-  const percentual = valorNum(row.percentual);
+  const meses = resumo.meses || {};
+  const previstoAnual = valorNum(resumo.previstoAnual);
+  const realizadoPeriodo = valorNum(resumo.realizadoPeriodo);
+  const realizadoMes = valorNum(resumo.realizadoMes);
+  const realizadoAnual = valorNum(resumo.realizadoAnual);
+  const metaMes = valorNum(resumo.metaMes);
+  const saldoMes = valorNum(resumo.saldoMes);
+  const percentualMensal = valorNum(resumo.percentualMensal);
+  const percentualAnual = valorNum(resumo.percentualAnual);
 
-  const clsPct = classePercentualMeta(percentual);
-  const clsSaldo = saldo >= 0 ? "meta-ok" : "meta-ruim";
-  const badgeText = percentual >= 100 ? "Meta atingida" : (percentual >= 80 ? "Em atenção" : "Abaixo da meta");
+  const clsPctMensal = classePercentualMeta(percentualMensal);
+  const clsPctAnual = classePercentualMeta(percentualAnual);
+  const clsSaldo = saldoMes >= 0 ? "meta-ok" : "meta-ruim";
+
+  const badgeText =
+    percentualMensal >= 100 ? "Meta mensal atingida" :
+    percentualMensal >= 80 ? "Mês em atenção" :
+    "Abaixo da meta";
 
   wrap.innerHTML = `
     <div class="meta-card-header">
       <div>
-        <div class="meta-card-title">${row.nome ?? "-"}</div>
-        <div class="meta-card-sub">${subtitle || "Indicadores acumulados até o mês selecionado"}</div>
+        <div class="meta-card-title">${resumo.nome ?? "-"}</div>
+        <div class="meta-card-sub">${subtitle || "Indicadores da meta"}</div>
       </div>
-      <span class="meta-badge ${clsPct}">
+      <span class="meta-badge ${clsPctMensal}">
         <i class="bi bi-bullseye"></i> ${badgeText}
       </span>
     </div>
@@ -1341,44 +1452,56 @@ function renderMetaCard(row, subtitle = ""){
     <div class="meta-main-grid">
       <div class="meta-box">
         <div class="meta-box-label">Previsto anual</div>
-        <div class="meta-box-value">${previsto}</div>
+        <div class="meta-box-value">${previstoAnual}</div>
       </div>
 
       <div class="meta-box">
-        <div class="meta-box-label">Realizado</div>
-        <div class="meta-box-value">${realizado}</div>
+        <div class="meta-box-label">Realizado (período)</div>
+        <div class="meta-box-value">${realizadoPeriodo}</div>
+        <div class="meta-box-small">Soma das inspeções do filtro</div>
       </div>
 
       <div class="meta-box">
-        <div class="meta-box-label">Meta até o mês</div>
-        <div class="meta-box-value">${metaAteMes.toFixed(2).replace(".", ",")}</div>
+        <div class="meta-box-label">Meta do mês</div>
+        <div class="meta-box-value">${metaMes}</div>
       </div>
 
       <div class="meta-box">
-        <div class="meta-box-label">Saldo</div>
-        <div class="meta-box-value ${clsSaldo}">${saldo.toFixed(2).replace(".", ",")}</div>
-        <div class="meta-box-small">Diferença entre realizado e meta acumulada</div>
+        <div class="meta-box-label">Realizado no mês</div>
+        <div class="meta-box-value">${realizadoMes}</div>
+      </div>
+
+      <div class="meta-box">
+        <div class="meta-box-label">Saldo do mês</div>
+        <div class="meta-box-value ${clsSaldo}">${saldoMes}</div>
+        <div class="meta-box-small">Realizado do mês - meta do mês</div>
+      </div>
+
+      <div class="meta-box">
+        <div class="meta-box-label">% atingido mensal</div>
+        <div class="meta-box-value ${clsPctMensal}">${percentualMensal.toFixed(1).replace(".", ",")}%</div>
       </div>
 
       <div class="meta-box" style="grid-column: span 2;">
-        <div class="meta-box-label">% atingido</div>
-        <div class="meta-box-value ${clsPct}">${percentual.toFixed(1).replace(".", ",")}%</div>
+        <div class="meta-box-label">% atingido anual</div>
+        <div class="meta-box-value ${clsPctAnual}">${percentualAnual.toFixed(1).replace(".", ",")}%</div>
+        <div class="meta-box-small">Realizado anual: ${realizadoAnual} / Previsto anual: ${previstoAnual}</div>
       </div>
     </div>
 
     <div class="meta-months">
-      <div class="meta-month"><div class="meta-month-name">Jan</div><div class="meta-month-value">${meses.jan}</div></div>
-      <div class="meta-month"><div class="meta-month-name">Fev</div><div class="meta-month-value">${meses.fev}</div></div>
-      <div class="meta-month"><div class="meta-month-name">Mar</div><div class="meta-month-value">${meses.mar}</div></div>
-      <div class="meta-month"><div class="meta-month-name">Abr</div><div class="meta-month-value">${meses.abr}</div></div>
-      <div class="meta-month"><div class="meta-month-name">Mai</div><div class="meta-month-value">${meses.mai}</div></div>
-      <div class="meta-month"><div class="meta-month-name">Jun</div><div class="meta-month-value">${meses.jun}</div></div>
-      <div class="meta-month"><div class="meta-month-name">Jul</div><div class="meta-month-value">${meses.jul}</div></div>
-      <div class="meta-month"><div class="meta-month-name">Ago</div><div class="meta-month-value">${meses.ago}</div></div>
-      <div class="meta-month"><div class="meta-month-name">Set</div><div class="meta-month-value">${meses.set}</div></div>
-      <div class="meta-month"><div class="meta-month-name">Out</div><div class="meta-month-value">${meses.out}</div></div>
-      <div class="meta-month"><div class="meta-month-name">Nov</div><div class="meta-month-value">${meses.nov}</div></div>
-      <div class="meta-month"><div class="meta-month-name">Dez</div><div class="meta-month-value">${meses.dez}</div></div>
+      <div class="meta-month"><div class="meta-month-name">Jan</div><div class="meta-month-value">${valorNum(meses.jan)}</div></div>
+      <div class="meta-month"><div class="meta-month-name">Fev</div><div class="meta-month-value">${valorNum(meses.fev)}</div></div>
+      <div class="meta-month"><div class="meta-month-name">Mar</div><div class="meta-month-value">${valorNum(meses.mar)}</div></div>
+      <div class="meta-month"><div class="meta-month-name">Abr</div><div class="meta-month-value">${valorNum(meses.abr)}</div></div>
+      <div class="meta-month"><div class="meta-month-name">Mai</div><div class="meta-month-value">${valorNum(meses.mai)}</div></div>
+      <div class="meta-month"><div class="meta-month-name">Jun</div><div class="meta-month-value">${valorNum(meses.jun)}</div></div>
+      <div class="meta-month"><div class="meta-month-name">Jul</div><div class="meta-month-value">${valorNum(meses.jul)}</div></div>
+      <div class="meta-month"><div class="meta-month-name">Ago</div><div class="meta-month-value">${valorNum(meses.ago)}</div></div>
+      <div class="meta-month"><div class="meta-month-name">Set</div><div class="meta-month-value">${valorNum(meses.set)}</div></div>
+      <div class="meta-month"><div class="meta-month-name">Out</div><div class="meta-month-value">${valorNum(meses.out)}</div></div>
+      <div class="meta-month"><div class="meta-month-name">Nov</div><div class="meta-month-value">${valorNum(meses.nov)}</div></div>
+      <div class="meta-month"><div class="meta-month-name">Dez</div><div class="meta-month-value">${valorNum(meses.dez)}</div></div>
     </div>
   `;
 
@@ -1396,6 +1519,7 @@ async function atualizarTabelaMetasDashboard(){
     const mesFim = document.getElementById("filtroMesFim")?.value || mesAtualYYYYMM();
     const regional = document.getElementById("filtroRegional")?.value || "";
     const supervisor = document.getElementById("filtroSupervisor")?.value || "";
+    const tipoEquipe = document.getElementById("filtroTipoEquipe")?.value || "";
 
     if (resumo) {
       resumo.textContent = `Meta até: ${labelMes(mesFim)}`;
@@ -1421,20 +1545,67 @@ async function atualizarTabelaMetasDashboard(){
       return;
     }
 
+    const inspecoesPeriodo = Array.isArray(dashboardState.inspecoesFiltradas)
+      ? dashboardState.inspecoesFiltradas
+      : [];
+
+    const anoRef = String(mesFim).slice(0,4);
+    const ytdIni = `${anoRef}-01-01`;
+    const ytdFim = ultimoDiaDoMesYYYYMM(mesFim);
+
+    let inspecoesYTD = await fetchInspecoesRange(ytdIni, ytdFim, supervisor || "");
+
+    if (regional) {
+      inspecoesYTD = inspecoesYTD.filter(i =>
+        isInRegionalByLiderNome(getNomeLiderInspecao(i), regional)
+      );
+    }
+
+    if (tipoEquipe) {
+      inspecoesYTD = filtrarPorTipoEquipe(inspecoesYTD, tipoEquipe);
+    }
+
     if (supervisor) {
       rows.sort((a,b) => normName(a.nome).localeCompare(normName(b.nome)));
+
       rows.forEach(r => {
+        const nomeSup = String(r.nome || "").trim();
+
+        const inspecoesPeriodoSup = filtrarInspecoesPorSupervisor(inspecoesPeriodo, nomeSup);
+        const inspecoesYTDSup = filtrarInspecoesPorSupervisor(inspecoesYTD, nomeSup);
+
+        const resumoMeta = montarResumoMeta({
+          row: r,
+          mesRef: mesFim,
+          inspecoesPeriodo: inspecoesPeriodoSup,
+          inspecoesYTD: inspecoesYTDSup,
+          nomeFallback: nomeSup || "Supervisor"
+        });
+
         container.appendChild(
-          renderMetaCard(r, `Supervisor filtrado • ${regional || "Todas as regionais"}`)
+          renderMetaCard(
+            resumoMeta,
+            `Supervisor filtrado • ${regional || "Todas as regionais"}`
+          )
         );
       });
+
       return;
     }
 
-    const geral = somarRowsMetas(rows, "GERAL");
+    const rowGeral = somarRowsMetasNovo(rows, "GERAL");
+
+    const resumoGeral = montarResumoMeta({
+      row: rowGeral,
+      mesRef: mesFim,
+      inspecoesPeriodo,
+      inspecoesYTD,
+      nomeFallback: "GERAL"
+    });
+
     container.appendChild(
       renderMetaCard(
-        geral,
+        resumoGeral,
         `${rows.length} supervisor(es) considerados • ${regional || "Todas as regionais"}`
       )
     );
