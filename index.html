@@ -1217,11 +1217,13 @@ function exportarAnaliticoCSV(){
 
     lista.forEach(item => {
       const row = colunas.map(col => {
-        const  = item?.[col];
-        if (Array.isArray()) return escapeCSV(valor.join(" | "));
+        const valor = item?.[col];
+
+        if (Array.isArray(valor)) return escapeCSV(valor.join(" | "));
         if (valor && typeof valor === "object") return escapeCSV(JSON.stringify(valor));
         return escapeCSV(valor ?? "");
       });
+
       linhas.push(row.join(";"));
     });
 
