@@ -1350,15 +1350,23 @@ function exportarAnaliticoCSV(){
     }
 
     const colunas = obterColunasAnalitico(lista);
+
     const linhas = [];
     linhas.push(colunas.map(escapeCSV).join(";"));
 
     lista.forEach(item => {
+
       const row = colunas.map(col => {
         const valor = item?.[col];
 
-        if (Array.isArray(valor)) return escapeCSV(valor.join(" | "));
-        if (valor && typeof valor === "object") return escapeCSV(JSON.stringify(valor));
+        if (Array.isArray(valor)){
+          return escapeCSV(valor.join(" | "));
+        }
+
+        if (valor && typeof valor === "object"){
+          return escapeCSV(JSON.stringify(valor));
+        }
+
         return escapeCSV(valor ?? "");
       });
 
@@ -1366,22 +1374,38 @@ function exportarAnaliticoCSV(){
     });
 
     const f = dashboardState.filtros || {};
+
     const nome = [
       "analitico_tela",
       f.mesIni || "sem_inicio",
       f.mesFim || "sem_fim",
       f.regional || "todas_regioes",
+
       (f.supervisores || []).length
-  ? f.supervisores.map(s => normName(s).replace(/\s+/g, "_")).join("_")
-  : "todos_supervisores"
+        ? f.supervisores
+            .map(s => normName(s).replace(/\s+/g, "_"))
+            .join("_")
+        : "todos_supervisores",
+
       f.tipoEquipe || "todas_equipes"
+
     ].join("_") + ".csv";
 
     baixarCSV(nome, linhas);
-    setStatus(`Download concluído: ${lista.length} registro(s) da tela.`, "success");
+
+    setStatus(
+      `Download concluído: ${lista.length} registro(s) da tela.`,
+      "success"
+    );
+
   } catch (e){
+
     console.error(e);
-    setStatus("Erro ao exportar os registros da tela.", "error");
+
+    setStatus(
+      "Erro ao exportar os registros da tela.",
+      "error"
+    );
   }
 }
 
