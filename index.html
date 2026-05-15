@@ -110,6 +110,8 @@
       flex-wrap:wrap;
       align-items:end;
       margin-bottom:14px;
+      position:relative;
+      z-index:20;
     }
 
     .status{
@@ -432,7 +434,7 @@
   box-shadow:0 12px 30px rgba(0,0,0,.12);
   padding:12px;
   display:none;
-  z-index:9999;
+  z-index:999999;
 }
 
 .multi-dropdown.open{
@@ -464,6 +466,9 @@
 .multi-select option:checked{
   background:#0097CE linear-gradient(0deg,#0097CE,#0097CE);
   color:#fff;
+}
+    .card{
+  overflow:visible !important;
 }
   </style>
 </head>
