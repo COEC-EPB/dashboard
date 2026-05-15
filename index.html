@@ -403,6 +403,68 @@
   color:#fff;
   font-weight:700;
 }
+    .multi-btn{
+  width:260px;
+  height:42px;
+  border:1px solid #dbe3ea;
+  border-radius:12px;
+  background:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 14px;
+  cursor:pointer;
+  font-size:14px;
+}
+
+.multi-btn:hover{
+  border-color:#0097CE;
+}
+
+.multi-dropdown{
+  position:absolute;
+  top:72px;
+  left:0;
+  width:320px;
+  background:#fff;
+  border:1px solid #dbe3ea;
+  border-radius:16px;
+  box-shadow:0 12px 30px rgba(0,0,0,.12);
+  padding:12px;
+  display:none;
+  z-index:9999;
+}
+
+.multi-dropdown.open{
+  display:block;
+}
+
+.multi-search{
+  width:100%;
+  margin-bottom:10px;
+  border:1px solid #dbe3ea;
+  border-radius:10px;
+  padding:10px;
+}
+
+.multi-select{
+  width:100%;
+  height:240px;
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  padding:6px;
+  font-size:14px;
+}
+
+.multi-select option{
+  padding:10px;
+  border-radius:10px;
+}
+
+.multi-select option:checked{
+  background:#0097CE linear-gradient(0deg,#0097CE,#0097CE);
+  color:#fff;
+}
   </style>
 </head>
 
@@ -461,17 +523,34 @@
           </select>
         </div>
 
-        <div style="flex:1;min-width:260px;">
-          <div class="hint" style="font-weight:700;margin-bottom:6px;">Supervisor (Líder)</div>
-          <div class="multi-select-wrapper">
-  <input
-    type="text"
-    id="buscaSupervisor"
-    placeholder="Buscar supervisor..."
-    class="multi-search"
-  >
+        <div style="min-width:260px;position:relative;">
+  <div class="hint" style="font-weight:700;margin-bottom:6px;">
+    Supervisor (Líder)
+  </div>
 
-  <select id="filtroSupervisor" multiple class="multi-select"></select>
+  <button
+    type="button"
+    id="toggleSupervisor"
+    class="multi-btn"
+  >
+    <span id="textoSupervisor">Selecionar supervisores</span>
+    <i class="bi bi-chevron-down"></i>
+  </button>
+
+  <div id="dropdownSupervisor" class="multi-dropdown">
+    <input
+      type="text"
+      id="buscaSupervisor"
+      placeholder="Buscar supervisor..."
+      class="multi-search"
+    >
+
+    <select
+      id="filtroSupervisor"
+      multiple
+      class="multi-select">
+    </select>
+  </div>
 </div>
         </div>
 
@@ -1292,7 +1371,9 @@ function exportarAnaliticoCSV(){
       f.mesIni || "sem_inicio",
       f.mesFim || "sem_fim",
       f.regional || "todas_regioes",
-      f.supervisor ? normName(f.supervisor).replace(/\s+/g, "_") : "todos_supervisores",
+      (f.supervisores || []).length
+  ? f.supervisores.map(s => normName(s).replace(/\s+/g, "_")).join("_")
+  : "todos_supervisores"
       f.tipoEquipe || "todas_equipes"
     ].join("_") + ".csv";
 
@@ -1830,7 +1911,7 @@ const supervisoresSelecionados = Array.from(
 
     dashboardState.inspecoesFiltradas = inspecoesPeriodoFiltradas;
     dashboardState.rankingFiltrado = rankingFiltrado;
-    dashboardState.filtros = { mesIni, mesFim, regional, supervisor, tipoEquipe };
+    dashboardState.filtros = { mesIni, mesFim, regional, supervisoresSelecionados, tipoEquipe };
 
     await atualizarTabelaMetasDashboard();
 
@@ -1868,6 +1949,52 @@ const supervisoresSelecionados = Array.from(
   document.getElementById("filtroSupervisor")?.addEventListener("change", atualizarDashboard);
 
   atualizarDashboard();
+
+  const btnSupervisor = document.getElementById("toggleSupervisor");
+const dropdownSupervisor = document.getElementById("dropdownSupervisor");
+const textoSupervisor = document.getElementById("textoSupervisor");
+
+btnSupervisor?.addEventListener("click", () => {
+  dropdownSupervisor.classList.toggle("open");
+});
+
+document.addEventListener("click", (e) => {
+  if (
+    !dropdownSupervisor.contains(e.target) &&
+    !btnSupervisor.contains(e.target)
+  ){
+    dropdownSupervisor.classList.remove("open");
+  }
+});
+
+document.getElementById("filtroSupervisor")
+?.addEventListener("change", () => {
+
+  const nomes = Array.from(
+    document.getElementById("filtroSupervisor").selectedOptions
+  ).map(o => o.value);
+
+  textoSupervisor.textContent =
+    nomes.length
+      ? `${nomes.length} supervisor(es)`
+      : "Selecionar supervisores";
+});
+
+const buscaSupervisor = document.getElementById("buscaSupervisor");
+
+buscaSupervisor?.addEventListener("input", () => {
+  const termo = normName(buscaSupervisor.value);
+
+  Array.from(
+    document.querySelectorAll("#filtroSupervisor option")
+  ).forEach(opt => {
+
+    const visible =
+      normName(opt.textContent).includes(termo);
+
+    opt.style.display = visible ? "" : "none";
+  });
+});
 })();
 </script>
 </body>
